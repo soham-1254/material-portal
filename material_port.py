@@ -27,7 +27,7 @@ LOG_FILE = "logs.xlsx"
 # -----------------------------
 
 DEPT_DEFAULT_MAP = {
-    "Batching": "002",
+    "Batching": ["002","023"],
     "Carding": "002",
     "Drawing": "002",
     "Spinning": "002",

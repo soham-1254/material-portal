@@ -28,25 +28,25 @@ LOG_FILE = "logs.xlsx"
 
 DEPT_DEFAULT_MAP = {
     "Batching": ["002","023"],
-    "Carding": "002",
-    "Drawing": "002",
-    "Spinning": "002",
-    "Winding": "002",
-    "Twisting": "002",
-    "Beaming": "002",
-    "Weaving": "002",
-    "Sack Sewing": "002",
-    "Finishing": "002",
-    "Bail - Press": "002",
-    "Workshop": "002",
-    "Boiler/Furnace": "002",
-    "Civil": "002",
-    "Dispensary": "001",
-    "EDP": "002",
-    "General": "002",
-    "Packaging Materials": "002",
-    "Power House": "002",
-    "Production Material": "002"
+    "Carding": ["002"],
+    "Drawing": ["002"],
+    "Spinning": ["002"],
+    "Winding": ["002"],
+    "Twisting": ["002"],
+    "Beaming": ["002"],
+    "Weaving": ["002"],
+    "Sack Sewing": ["002"],
+    "Finishing": ["002"],
+    "Bail - Press": ["002"],
+    "Workshop": ["002"],
+    "Boiler/Furnace": ["002"],
+    "Civil": ["002"],
+    "Dispensary": ["001"],
+    "EDP": ["002"],
+    "General": ["002"],
+    "Packaging Materials": ["002"],
+    "Power House": ["002"],
+    "Production Material": ["002"]
 }
 
 GLOBAL_CLASSES = ["001","019","032"]
@@ -103,7 +103,6 @@ def save_request(data):
     df = pd.DataFrame([data])
 
     if os.path.exists(REQUEST_FILE):
-
         old = pd.read_excel(REQUEST_FILE)
         df = pd.concat([old,df],ignore_index=True)
 
@@ -121,7 +120,6 @@ def write_log(user,action):
     df = pd.DataFrame([log])
 
     if os.path.exists(LOG_FILE):
-
         old = pd.read_excel(LOG_FILE)
         df = pd.concat([old,df],ignore_index=True)
 
@@ -163,7 +161,6 @@ Reason:
     server = smtplib.SMTP(SMTP_SERVER,SMTP_PORT)
     server.starttls()
     server.login(SMTP_EMAIL,SMTP_PASSWORD)
-
     server.sendmail(SMTP_EMAIL,ADMIN_EMAILS,msg.as_string())
     server.quit()
 
@@ -175,7 +172,7 @@ Hello,
 
 Your request {request_id} has been APPROVED.
 
-Material has been successfully created .
+Material has been successfully created.
 
 Regards,
 IT Team
@@ -190,12 +187,11 @@ IT Team
     server = smtplib.SMTP(SMTP_SERVER,SMTP_PORT)
     server.starttls()
     server.login(SMTP_EMAIL,SMTP_PASSWORD)
-
     server.sendmail(SMTP_EMAIL,[email],msg.as_string())
     server.quit()
 
 
-def get_subclass_options(mill,dept,selected_class):
+def get_subclass_options(dept,selected_class):
 
     pool = SUBCLASS_DATA.get(selected_class,[])
 
@@ -206,10 +202,7 @@ def get_subclass_options(mill,dept,selected_class):
         if not keywords:
             return ["CL_FACTORY_CLASS"]
 
-        filtered = [
-            s for s in pool
-            if any(k in s for k in keywords)
-        ]
+        filtered = [s for s in pool if any(k in s for k in keywords)]
 
         return filtered if filtered else ["CL_FACTORY_CLASS"]
 
@@ -228,12 +221,12 @@ menu = st.sidebar.selectbox(
 )
 
 # -----------------------------
-# CREATE REQUEST PAGE
+# CREATE REQUEST
 # -----------------------------
 
 if menu == "Create Request":
 
-    st.title(" Material Creation Form")
+    st.title("Material Creation Form")
 
     col1,col2 = st.columns(2)
 
@@ -245,48 +238,26 @@ if menu == "Create Request":
             "Department",
             sorted(list(DEPT_DEFAULT_MAP.keys()))
         )
-        req_by_dept = st.text_input(
-            " Requested By (Depertment)",
-            placeholder="e.g. Requester name from department"
-        )
 
-        req_by = st.text_input(
-            " Requested By (Store)",
-            placeholder="e.g. Sulagna Roy, Sanat Das"
-        )
-
-        req_mail = st.text_input(
-            " Mail Id of requester",
-            placeholder="e.g. store.hjm@jute-india.com"
-        )
-
-        machine = st.text_input(
-            " Machine",
-            placeholder="e.g. General, 030BC021, 040D2005"
-        )
+        req_by_dept = st.text_input("Requested By (Department)")
+        req_by = st.text_input("Requested By (Store)")
+        req_mail = st.text_input("Requester Email")
+        machine = st.text_input("Machine")
 
     with col2:
 
-        default_class = DEPT_DEFAULT_MAP.get(dept,"002")
+        default_classes = DEPT_DEFAULT_MAP.get(dept, ["002"])
 
-        class_options = sorted(list(set([default_class] + GLOBAL_CLASSES + ["023"])))
+        class_options = sorted(list(set(default_classes + GLOBAL_CLASSES)))
 
-        selected_class = st.selectbox(
-            "Class",
-            class_options,
-            index=class_options.index(default_class)
-        )
+        selected_class = st.selectbox("Class", class_options)
 
-        subclass_options = get_subclass_options(mill,dept,selected_class)
+        subclass_options = get_subclass_options(dept,selected_class)
 
         subclass = st.selectbox("Subclass",subclass_options)
 
-        attr = st.text_input(
-            "9. Material Attributes",
-            placeholder="e.g. Length, Width , Diameter"
-        )
-
-        reason = st.text_area("Reason for new material creation")
+        attr = st.text_input("Material Attributes")
+        reason = st.text_area("Reason")
 
     if st.button("Submit Request"):
 
@@ -315,9 +286,7 @@ if menu == "Create Request":
             }
 
             save_request(data)
-
             send_admin_email(data)
-
             write_log(req_by,f"Submitted {request_id}")
 
             st.success(f"Request {request_id} submitted")
@@ -328,7 +297,7 @@ if menu == "Create Request":
 
 elif menu == "Admin Panel":
 
-    st.title("🔑 Admin Panel")
+    st.title("Admin Panel")
 
     user = st.text_input("Username")
     pwd = st.text_input("Password",type="password")
@@ -336,7 +305,6 @@ elif menu == "Admin Panel":
     if st.button("Login"):
 
         if user == ADMIN_USERNAME and pwd == ADMIN_PASSWORD:
-
             st.session_state.admin = True
 
     if st.session_state.get("admin"):
@@ -350,22 +318,6 @@ elif menu == "Admin Panel":
         col1.metric("Total Requests",len(df))
         col2.metric("Pending",len(df[df["Status"]=="Pending"]))
         col3.metric("Approved",len(df[df["Status"]=="Approved"]))
-
-        st.subheader("Filters")
-
-        mill_filter = st.selectbox("Filter Mill",["All"] + list(df["Mill"].unique()))
-        dept_filter = st.selectbox("Filter Department",["All"] + list(df["Department"].unique()))
-
-        if mill_filter != "All":
-            df = df[df["Mill"]==mill_filter]
-
-        if dept_filter != "All":
-            df = df[df["Department"]==dept_filter]
-
-        search = st.text_input("Search Request ID")
-
-        if search:
-            df = df[df["Request_ID"].str.contains(search)]
 
         st.dataframe(df)
 
@@ -394,12 +346,12 @@ elif menu == "Admin Panel":
                 st.rerun()
 
 # -----------------------------
-# LOG PAGE
+# LOGS
 # -----------------------------
 
 elif menu == "Logs":
 
-    st.title("📜 System Logs")
+    st.title("System Logs")
 
     if os.path.exists(LOG_FILE):
 

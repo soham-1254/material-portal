@@ -14,7 +14,10 @@ SMTP_PASSWORD = "yees jhwl rnxj jeyy"
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
-ADMIN_EMAILS = ["soham.panda@jute-india.com"]
+ADMIN_EMAILS = ["soham.panda@jute-india.com",
+               "payal.sinha@jute-india.com",
+               "anushka.dutta@jute-india.com",
+               "nitin.pandey@jute-india.com"]
 
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"

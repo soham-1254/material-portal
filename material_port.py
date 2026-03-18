@@ -263,13 +263,11 @@ if menu == "Create Request":
         with colE:
             material_type = st.text_input(
                 "Material Type",
-                placeholder="e.g. ERSA, ROH, FERT",
                 key=f"mat_type_{i}"
             )
         with colF:
             material_group = st.text_input(
                 "Material Group",
-                placeholder="e.g. Spare Parts, Electrical",
                 key=f"mat_group_{i}"
             )
         with colG:
@@ -281,7 +279,6 @@ if menu == "Create Request":
         with colH:
             ref_material = st.text_input(
                 "Reference Material (if any)",
-                placeholder="e.g. 10001234",
                 key=f"ref_mat_{i}"
             )
 

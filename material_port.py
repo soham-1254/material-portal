@@ -18,6 +18,7 @@ ADMIN_EMAILS = [
     "soham.panda@jute-india.com",
     "anushka.dutta@jute-india.com",
     "nitin.pandey@jute-india.com",
+    "prakhar.chandel@jute-india.com",
     "payal.sinha@jute-india.com"
 ]
 

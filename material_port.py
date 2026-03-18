@@ -235,7 +235,7 @@ if menu == "Create Request":
     num_materials = st.number_input(
         "Number of Materials",
         min_value=1,
-        max_value=10,
+        max_value=100,
         value=1
     )
 

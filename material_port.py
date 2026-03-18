@@ -21,11 +21,7 @@ ADMIN_EMAILS = [
     "nitin.pandey@jute-india.com"
 ]
 
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "admin123"
-
 REQUEST_FILE = "material_requests.xlsx"
-LOG_FILE = "logs.xlsx"
 
 # -----------------------------
 # DATA
@@ -105,22 +101,6 @@ def save_request(data):
     df.to_excel(REQUEST_FILE, index=False)
 
 
-def write_log(user, action):
-    log = {
-        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "User": user,
-        "Action": action
-    }
-
-    df = pd.DataFrame([log])
-
-    if os.path.exists(LOG_FILE):
-        old = pd.read_excel(LOG_FILE, engine="openpyxl")
-        df = pd.concat([old, df], ignore_index=True)
-
-    df.to_excel(LOG_FILE, index=False)
-
-
 def send_admin_email(data):
 
     materials_text = "\n".join(
@@ -192,118 +172,124 @@ def get_subclass_options(mill, dept, selected_class):
 
 st.set_page_config(page_title="Material Master Portal", layout="wide")
 
-menu = st.sidebar.selectbox(
-    "Navigation",
-    ["Create Request"]
-)
+st.title("Material Creation Form")
 
-# -----------------------------
-# CREATE REQUEST
-# -----------------------------
+col1, col2 = st.columns(2)
 
-if menu == "Create Request":
+with col1:
+    mill = st.selectbox("Mill", ["MIJM", "SGJM", "SHJM", "SSKT"])
 
-    st.title("Material Creation Form")
+    dept = st.selectbox(
+        "Department",
+        sorted(list(DEPT_DEFAULT_MAP.keys()))
+    )
 
-    col1, col2 = st.columns(2)
+    req_by_dept = st.text_input(
+        "Requested By (Dept)",
+        placeholder="e.g. Name from department"
+    )
+
+    req_by = st.text_input(
+        "Requested By (Store)",
+        placeholder="e.g. Sulagna Roy, Sanat Das"
+    )
+
+    req_mail = st.text_input(
+        "Requester Email",
+        placeholder="e.g. store.hjm@jute-india.com"
+    )
+
+    machine = st.text_input(
+        "Machine",
+        placeholder="e.g. General, 030BC021"
+    )
+
+with col2:
+    default_classes = DEPT_DEFAULT_MAP.get(dept, ["002"])
+    class_options = sorted(list(set(default_classes + GLOBAL_CLASSES)))
+
+    selected_class = st.selectbox("Class", class_options)
+
+    subclass_options = get_subclass_options(mill, dept, selected_class)
+
+    subclass = st.selectbox("Subclass", subclass_options)
+
+    reason = st.text_area(
+        "Reason",
+        placeholder="Explain why new material is required"
+    )
+
+# ---------------- MATERIALS ----------------
+
+st.subheader("Materials")
+
+if st.button("➕ Add Material"):
+    st.session_state.materials.append({"attr": "", "unit": "SET"})
+
+units = ["SET", "Pcs", "L", "Kg"]
+
+for i, mat in enumerate(st.session_state.materials):
+
+    col1, col2, col3 = st.columns([4, 2, 1])
 
     with col1:
-        mill = st.selectbox("Mill", ["MIJM", "SGJM", "SHJM", "SSKT"])
-
-        dept = st.selectbox(
-            "Department",
-            sorted(list(DEPT_DEFAULT_MAP.keys()))
+        st.session_state.materials[i]["attr"] = st.text_input(
+            f"Material {i+1}",
+            value=mat["attr"],
+            placeholder="e.g. Length, Width, Diameter",
+            key=f"attr_{i}"
         )
 
-        req_by_dept = st.text_input("Requested By (Dept)")
-        req_by = st.text_input("Requested By (Store)")
-        req_mail = st.text_input("Requester Email")
-        machine = st.text_input("Machine")
-
     with col2:
-        default_classes = DEPT_DEFAULT_MAP.get(dept, ["002"])
+        st.session_state.materials[i]["unit"] = st.selectbox(
+            f"Unit {i+1}",
+            units,
+            index=units.index(mat["unit"]) if mat["unit"] in units else 0,
+            key=f"unit_{i}"
+        )
 
-        class_options = sorted(list(set(default_classes + GLOBAL_CLASSES)))
+    with col3:
+        if st.button("❌", key=f"del_{i}"):
+            st.session_state.materials.pop(i)
+            st.rerun()
 
-        selected_class = st.selectbox("Class", class_options)
+# ---------------- SUBMIT ----------------
 
-        subclass_options = get_subclass_options(mill, dept, selected_class)
+if st.button("Submit Request"):
 
-        subclass = st.selectbox("Subclass", subclass_options)
+    if (
+        not req_by or
+        not req_mail or
+        "@" not in req_mail or
+        not machine or
+        not reason or
+        len(st.session_state.materials) == 0
+    ):
+        st.error("Fill all required fields & add at least 1 material")
 
-        reason = st.text_area("Reason")
+    else:
 
-    # ---------------- MATERIALS ----------------
+        request_id = generate_request_id()
 
-    st.subheader("Materials")
+        data = {
+            "Request_ID": request_id,
+            "Date": datetime.now(),
+            "Mill": mill,
+            "Department": dept,
+            "Requested_By_dept": req_by_dept,
+            "Requested_By": req_by,
+            "Requester_Email": req_mail,
+            "Machine": machine,
+            "Class": selected_class,
+            "Subclass": subclass,
+            "Attributes": st.session_state.materials.copy(),
+            "Reason": reason,
+            "Status": "Pending"
+        }
 
-    if st.button("➕ Add Material"):
-        st.session_state.materials.append({"attr": "", "unit": "SET"})
+        save_request(data)
+        send_admin_email(data)
 
-    units = ["SET", "Pcs", "L", "Kg"]
+        st.success(f"Request {request_id} submitted")
 
-    for i, mat in enumerate(st.session_state.materials):
-
-        col1, col2, col3 = st.columns([4, 2, 1])
-
-        with col1:
-            st.session_state.materials[i]["attr"] = st.text_input(
-                f"Material {i+1}",
-                value=mat["attr"],
-                key=f"attr_{i}"
-            )
-
-        with col2:
-            st.session_state.materials[i]["unit"] = st.selectbox(
-                f"Unit {i+1}",
-                units,
-                index=units.index(mat["unit"]) if mat["unit"] in units else 0,
-                key=f"unit_{i}"
-            )
-
-        with col3:
-            if st.button("❌", key=f"del_{i}"):
-                st.session_state.materials.pop(i)
-                st.rerun()
-
-    # ---------------- SUBMIT ----------------
-
-    if st.button("Submit Request"):
-
-        if (
-            not req_by or
-            not req_mail or
-            "@" not in req_mail or
-            not machine or
-            not reason or
-            len(st.session_state.materials) == 0
-        ):
-            st.error("Fill all required fields & add at least 1 material")
-
-        else:
-
-            request_id = generate_request_id()
-
-            data = {
-                "Request_ID": request_id,
-                "Date": datetime.now(),
-                "Mill": mill,
-                "Department": dept,
-                "Requested_By_dept": req_by_dept,
-                "Requested_By": req_by,
-                "Requester_Email": req_mail,
-                "Machine": machine,
-                "Class": selected_class,
-                "Subclass": subclass,
-                "Attributes": st.session_state.materials.copy(),
-                "Reason": reason,
-                "Status": "Pending"
-            }
-
-            save_request(data)
-            send_admin_email(data)
-            write_log(req_by, f"Submitted {request_id}")
-
-            st.success(f"Request {request_id} submitted")
-
-            st.session_state.materials = []
+        st.session_state.materials = []

@@ -28,7 +28,49 @@ REQUEST_FILE = "material_requests.xlsx"
 LOG_FILE = "logs.xlsx"
 
 # -----------------------------
-# SESSION STATE INIT
+# DATA
+# -----------------------------
+
+DEPT_DEFAULT_MAP = {
+    "Batching": ["002","023"],
+    "Carding": ["002"],
+    "Drawing": ["002"],
+    "Spinning": ["002"],
+    "Winding": ["002"],
+    "Twisting": ["002"]
+}
+
+GLOBAL_CLASSES = ["001","019","032"]
+
+SUBCLASS_DATA = {
+    "001": ["CL_FACTORY_CLASS","FG_CLASS","JUTE_CLASS","CL_MATERIAL_CLASS"],
+    "019": ["WC_STIL"],
+    "032": ["PO_RELEASE","PR_RELEASE"],
+    "023": ["BATCH_CLASS","FG_BATCH_CLASS","SPRDER_MAT_CLASS"],
+    "002":[
+        "CL_CARD_MIJM","CL_CARD_SGJM","CL_CARD_SHJM","CL_CARD_ALL_MILLS",
+        "CL_COP_MIJM","CL_COP_SGJM","CL_COP_SHJM",
+        "CL_DRAW_MIJM","CL_DRAW_SGJM","CL_DRAW_SHJM","CL_DRAW_ALL_MILLS",
+        "CL_SOFT_MIJM","CL_SOFT_SGJM","CL_SOFT_SHJM",
+        "CL_SPIN_MIJM","CL_SPIN_SGJM","CL_SPIN_SHJM","CL_SPIN_ALL_MILLS",
+        "CL_SPOOL_MIJM","CL_SPOOL_SGJM","CL_SPOOL_SHJM",
+        "CL_SPREAD_MIJM","CL_SPREAD_SGJM","CL_SPREAD_SHJM",
+        "CL_WINDING_ALL_MILLS","CL_TWISTING_ALL_MILLS",
+        "CL_FACTORY_CLASS"
+    ]
+}
+
+DEPT_KEYWORDS = {
+    "Batching":["SOFT","SPREAD"],
+    "Carding":["CARD"],
+    "Drawing":["DRAW"],
+    "Spinning":["SPIN"],
+    "Winding":["COP","SPOOL","WINDING"],
+    "Twisting":["TWISTING"]
+}
+
+# -----------------------------
+# SESSION STATE
 # -----------------------------
 
 if "materials" not in st.session_state:
@@ -125,33 +167,24 @@ Reason:
         pass
 
 
-def send_approval_email(email, request_id):
+def get_subclass_options(mill, dept, selected_class):
 
-    body = f"""
-Hello,
+    pool = SUBCLASS_DATA.get(selected_class, [])
 
-Your request {request_id} has been APPROVED.
+    if selected_class == "002":
+        keywords = DEPT_KEYWORDS.get(dept, [])
 
-Material has been successfully created.
+        if not keywords:
+            return ["CL_FACTORY_CLASS"]
 
-Regards,
-IT Team
-"""
+        filtered = [
+            s for s in pool
+            if any(k in s for k in keywords)
+        ]
 
-    msg = MIMEText(body)
-    msg["Subject"] = f"Material Created - {request_id}"
-    msg["From"] = SMTP_EMAIL
-    msg["To"] = email
+        return filtered if filtered else ["CL_FACTORY_CLASS"]
 
-    try:
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
-        server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.sendmail(SMTP_EMAIL, [email], msg.as_string())
-        server.quit()
-    except:
-        pass
-
+    return pool
 
 # -----------------------------
 # UI
@@ -161,7 +194,7 @@ st.set_page_config(page_title="Material Master Portal", layout="wide")
 
 menu = st.sidebar.selectbox(
     "Navigation",
-    ["Create Request", "Admin Panel", "Logs"]
+    ["Create Request"]
 )
 
 # -----------------------------
@@ -176,9 +209,11 @@ if menu == "Create Request":
 
     with col1:
         mill = st.selectbox("Mill", ["MIJM", "SGJM", "SHJM", "SSKT"])
-        dept = st.selectbox("Department", [
-            "Batching","Carding","Drawing","Spinning","Winding","Twisting"
-        ])
+
+        dept = st.selectbox(
+            "Department",
+            sorted(list(DEPT_DEFAULT_MAP.keys()))
+        )
 
         req_by_dept = st.text_input("Requested By (Dept)")
         req_by = st.text_input("Requested By (Store)")
@@ -186,11 +221,19 @@ if menu == "Create Request":
         machine = st.text_input("Machine")
 
     with col2:
-        selected_class = st.selectbox("Class", ["001", "002", "019", "032"])
-        subclass = st.text_input("Subclass")
+        default_classes = DEPT_DEFAULT_MAP.get(dept, ["002"])
+
+        class_options = sorted(list(set(default_classes + GLOBAL_CLASSES)))
+
+        selected_class = st.selectbox("Class", class_options)
+
+        subclass_options = get_subclass_options(mill, dept, selected_class)
+
+        subclass = st.selectbox("Subclass", subclass_options)
+
         reason = st.text_area("Reason")
 
-    # ---------------- MATERIAL SECTION ----------------
+    # ---------------- MATERIALS ----------------
 
     st.subheader("Materials")
 

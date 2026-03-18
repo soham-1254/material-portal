@@ -122,6 +122,7 @@ def send_admin_email(all_data):
     for i, d in enumerate(all_data, 1):
         material_rows += f"""
   Material {i}:
+    Material Name   : {d['Material_Name']}
     Machine         : {d['Machine']}
     Attributes      : {d['Attributes']}
     Unit            : {d['Unit']}
@@ -243,30 +244,37 @@ if menu == "Create Request":
     for i in range(num_materials):
         st.markdown(f"### Material {i+1}")
 
-        colA, colB, colC = st.columns(3)
+        colA, colB, colC, colD = st.columns(4)  # added one more column
 
         with colA:
+            material_name = st.text_input(
+                "Material Name",
+                placeholder="e.g. Bearing, Belt, Oil Filter",
+                key=f"material_name_{i}"
+            )
+
+        with colB:
             machine = st.text_input(
                 " Machine",
                 placeholder="e.g. General, 030BC021, 040D2005",
                 key=f"machine_{i}"
             )
 
-        with colB:
+        with colC:
             attr = st.text_input(
-                "9. Material Attributes",
+                "Material Attributes",
                 placeholder="e.g. Length, Width , Diameter",
                 key=f"attr_{i}"
             )
 
-        with colC:
+        with colD:
             unit = st.selectbox(
                 "Unit",
                 ["SET", "Pcs", "L", "Kg"],
                 key=f"unit_{i}"
             )
 
-        materials.append((machine, attr, unit))
+        materials.append((material_name, machine, attr, unit))
 
     reason = st.text_area("Reason for new material creation")
 
@@ -278,8 +286,8 @@ if menu == "Create Request":
 
             all_data = []  # collect all material rows
 
-            for machine, attr, unit in materials:
-                if not machine or not attr:
+            for material_name, machine, attr, unit in materials:
+                if not material_name or not machine or not attr:
                     continue
 
                 data = {
@@ -290,6 +298,7 @@ if menu == "Create Request":
                     "Requested_By_dept": req_by_dept,
                     "Requested_By": req_by,
                     "Requester_Email": req_mail,
+                    "Material_Name": material_name,
                     "Machine": machine,
                     "Class": selected_class,
                     "Subclass": subclass,
@@ -300,14 +309,14 @@ if menu == "Create Request":
                 }
 
                 save_request(data)
-                all_data.append(data)  # accumulate each material
+                all_data.append(data)
 
             if all_data:
-                send_admin_email(all_data)  # send ONCE with ALL materials
+                send_admin_email(all_data)
                 write_log(req_by, f"Submitted {request_id}")
                 st.success(f"Request {request_id} submitted")
             else:
-                st.error("Please fill in Machine and Attributes for at least one material.")
+                st.error("Please fill in Material Name, Machine and Attributes for at least one material.")
 
 # -----------------------------
 # ADMIN PANEL

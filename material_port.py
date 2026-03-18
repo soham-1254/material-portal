@@ -82,6 +82,33 @@ DEPT_KEYWORDS = {
     "Twisting":["TWISTING"]
 }
 
+MATERIAL_TYPES = [
+    "ROH - Raw Material",
+    "HALB - Semi-Finished",
+    "FERT - Finished Good",
+    "ERSA - Spare Parts",
+    "NLAG - Non-Stock",
+    "DIEN - Services",
+    "VERP - Packaging",
+    "HIBE - Operating Supplies",
+]
+
+MATERIAL_GROUPS = [
+    "Electrical",
+    "Mechanical",
+    "Civil",
+    "IT & EDP",
+    "Jute Raw Material",
+    "Packing Material",
+    "Lubricants & Oils",
+    "Consumables",
+    "Spare Parts",
+    "Tools & Equipment",
+    "Safety Items",
+    "Medical & Dispensary",
+    "Others",
+]
+
 # -----------------------------
 # FUNCTIONS
 # -----------------------------
@@ -117,7 +144,6 @@ def write_log(user, action):
 def send_admin_email(all_data):
     first = all_data[0]
 
-    # Build material rows
     material_rows = ""
     for i, d in enumerate(all_data, 1):
         material_rows += f"""
@@ -126,6 +152,11 @@ def send_admin_email(all_data):
     Machine         : {d['Machine']}
     Attributes      : {d['Attributes']}
     Unit            : {d['Unit']}
+    Material Type   : {d['Material_Type']}
+    Material Group  : {d['Material_Group']}
+    HSN Code        : {d['HSN_Code']}
+    Department      : {d['Department']}
+    Ref Material    : {d['Ref_Material']}
 """
 
     body = f"""
@@ -161,15 +192,12 @@ Materials ({len(all_data)} total):
 
 def get_subclass_options(mill, dept, selected_class):
     pool = SUBCLASS_DATA.get(selected_class, [])
-
     if selected_class == "002":
         keywords = DEPT_KEYWORDS.get(dept, [])
         if not keywords:
             return ["CL_FACTORY_CLASS"]
-
         filtered = [s for s in pool if any(k in s for k in keywords)]
         return filtered if filtered else ["CL_FACTORY_CLASS"]
-
     return pool
 
 # -----------------------------
@@ -188,47 +216,33 @@ menu = st.sidebar.selectbox(
 if menu == "Create Request":
     st.title("Material Creation Form")
 
-    col1,col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
     with col1:
-        mill = st.selectbox("Mill",["MIJM","SGJM","SHJM","SSKT"])
-
-        dept = st.selectbox(
-            "Department",
-            sorted(list(DEPT_DEFAULT_MAP.keys()))
-        )
-
+        mill = st.selectbox("Mill", ["MIJM","SGJM","SHJM","SSKT"])
+        dept = st.selectbox("Department", sorted(list(DEPT_DEFAULT_MAP.keys())))
         req_by_dept = st.text_input(
-            " Requested By (Depertment)",
+            "Requested By (Department)",
             placeholder="e.g. Requester name from department"
         )
-
         req_by = st.text_input(
-            " Requested By (Store)",
+            "Requested By (Store)",
             placeholder="e.g. Sulagna Roy, Sanat Das"
         )
-
         req_mail = st.text_input(
-            " Mail Id of requester",
+            "Mail Id of Requester",
             placeholder="e.g. store.hjm@jute-india.com"
         )
 
     with col2:
         default_classes = DEPT_DEFAULT_MAP.get(dept, ["002"])
         class_options = sorted(list(set(default_classes + GLOBAL_CLASSES)))
-
         selected_class = st.selectbox("Class", class_options)
-
-        subclass_options = get_subclass_options(mill,dept,selected_class)
-
-        subclass = st.selectbox(
-            "Subclass",
-            subclass_options,
-            key=f"{dept}_{selected_class}"
-        )
+        subclass_options = get_subclass_options(mill, dept, selected_class)
+        subclass = st.selectbox("Subclass", subclass_options, key=f"{dept}_{selected_class}")
 
     # -----------------------------
-    # MATERIALS WITH UNIT
+    # MATERIALS
     # -----------------------------
     st.subheader("Add Material(s)")
 
@@ -242,39 +256,66 @@ if menu == "Create Request":
     materials = []
 
     for i in range(num_materials):
-        st.markdown(f"### Material {i+1}")
+        st.markdown(f"#### Material {i+1}")
 
-        colA, colB, colC, colD = st.columns(4)  # added one more column
-
+        # Row 1: existing fields
+        colA, colB, colC, colD = st.columns(4)
         with colA:
             material_name = st.text_input(
                 "Material Name",
                 placeholder="e.g. Bearing, Belt, Oil Filter",
                 key=f"material_name_{i}"
             )
-
         with colB:
             machine = st.text_input(
-                " Machine",
-                placeholder="e.g. General, 030BC021, 040D2005",
+                "Machine",
+                placeholder="e.g. General, 030BC021",
                 key=f"machine_{i}"
             )
-
         with colC:
             attr = st.text_input(
                 "Material Attributes",
-                placeholder="e.g. Length, Width , Diameter",
+                placeholder="e.g. Length, Width, Diameter",
                 key=f"attr_{i}"
             )
-
         with colD:
             unit = st.selectbox(
                 "Unit",
-                ["SET", "Pcs", "L", "Kg"],
+                ["SET", "Pcs", "L", "Kg", "M", "NOS", "MT", "Box"],
                 key=f"unit_{i}"
             )
 
-        materials.append((material_name, machine, attr, unit))
+        # Row 2: new fields
+        colE, colF, colG, colH = st.columns(4)
+        with colE:
+            material_type = st.selectbox(
+                "Material Type",
+                MATERIAL_TYPES,
+                key=f"mat_type_{i}"
+            )
+        with colF:
+            material_group = st.selectbox(
+                "Material Group",
+                MATERIAL_GROUPS,
+                key=f"mat_group_{i}"
+            )
+        with colG:
+            hsn_code = st.text_input(
+                "HSN Code",
+                placeholder="e.g. 84819090",
+                key=f"hsn_{i}"
+            )
+        with colH:
+            ref_material = st.text_input(
+                "Reference Material (if any)",
+                placeholder="e.g. 10001234",
+                key=f"ref_mat_{i}"
+            )
+
+        st.divider()
+
+        materials.append((material_name, machine, attr, unit,
+                          material_type, material_group, hsn_code, ref_material))
 
     reason = st.text_area("Reason for new material creation")
 
@@ -283,10 +324,10 @@ if menu == "Create Request":
             st.error("All fields mandatory")
         else:
             request_id = generate_request_id()
+            all_data = []
 
-            all_data = []  # collect all material rows
-
-            for material_name, machine, attr, unit in materials:
+            for (material_name, machine, attr, unit,
+                 material_type, material_group, hsn_code, ref_material) in materials:
                 if not material_name or not machine or not attr:
                     continue
 
@@ -304,6 +345,10 @@ if menu == "Create Request":
                     "Subclass": subclass,
                     "Attributes": attr,
                     "Unit": unit,
+                    "Material_Type": material_type,
+                    "Material_Group": material_group,
+                    "HSN_Code": hsn_code,
+                    "Ref_Material": ref_material if ref_material else "N/A",
                     "Reason": reason,
                     "Status": "Pending"
                 }

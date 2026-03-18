@@ -16,9 +16,9 @@ SMTP_PORT = 587
 
 ADMIN_EMAILS = [
     "soham.panda@jute-india.com",
-    "payal.sinha@jute-india.com",
     "anushka.dutta@jute-india.com",
-    "nitin.pandey@jute-india.com"
+    "nitin.pandey@jute-india.com",
+    "prakhar.chandel@jute-india.com"
 ]
 
 REQUEST_FILE = "material_requests.xlsx"

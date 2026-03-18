@@ -82,33 +82,6 @@ DEPT_KEYWORDS = {
     "Twisting":["TWISTING"]
 }
 
-MATERIAL_TYPES = [
-    "ROH - Raw Material",
-    "HALB - Semi-Finished",
-    "FERT - Finished Good",
-    "ERSA - Spare Parts",
-    "NLAG - Non-Stock",
-    "DIEN - Services",
-    "VERP - Packaging",
-    "HIBE - Operating Supplies",
-]
-
-MATERIAL_GROUPS = [
-    "Electrical",
-    "Mechanical",
-    "Civil",
-    "IT & EDP",
-    "Jute Raw Material",
-    "Packing Material",
-    "Lubricants & Oils",
-    "Consumables",
-    "Spare Parts",
-    "Tools & Equipment",
-    "Safety Items",
-    "Medical & Dispensary",
-    "Others",
-]
-
 # -----------------------------
 # FUNCTIONS
 # -----------------------------
@@ -288,15 +261,15 @@ if menu == "Create Request":
         # Row 2: new fields
         colE, colF, colG, colH = st.columns(4)
         with colE:
-            material_type = st.selectbox(
+            material_type = st.text_input(
                 "Material Type",
-                MATERIAL_TYPES,
+                placeholder="e.g. ERSA, ROH, FERT",
                 key=f"mat_type_{i}"
             )
         with colF:
-            material_group = st.selectbox(
+            material_group = st.text_input(
                 "Material Group",
-                MATERIAL_GROUPS,
+                placeholder="e.g. Spare Parts, Electrical",
                 key=f"mat_group_{i}"
             )
         with colG:
@@ -328,8 +301,9 @@ if menu == "Create Request":
 
             for (material_name, machine, attr, unit,
                  material_type, material_group, hsn_code, ref_material) in materials:
-                if not material_name or not machine or not attr:
-                    continue
+                if not material_name or not machine or not attr or not material_type or not material_group or not hsn_code:
+                    st.error(f"Material Name, Machine, Attributes, Material Type, Material Group and HSN Code are all mandatory.")
+                    st.stop()
 
                 data = {
                     "Request_ID": request_id,

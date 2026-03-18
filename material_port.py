@@ -115,35 +115,40 @@ def write_log(user, action):
     df.to_excel(LOG_FILE, index=False)
 
 def send_admin_email(all_data):
-    # Build a row for each material
+    first = all_data[0]
+
+    # Build material rows
     material_rows = ""
     for i, d in enumerate(all_data, 1):
         material_rows += f"""
   Material {i}:
-    Machine    : {d['Machine']}
-    Attributes : {d['Attributes']}
-    Unit       : {d['Unit']}
+    Machine         : {d['Machine']}
+    Attributes      : {d['Attributes']}
+    Unit            : {d['Unit']}
 """
 
-    # Common fields come from the first entry
-    first = all_data[0]
     body = f"""
 Material Creation Request
+=========================
 
-Request ID           : {first['Request_ID']}
-Mill                 : {first['Mill']}
-Department           : {first['Department']}
-Requested By (Dept)  : {first['Requested_By_dept']}
-Requested By (Store) : {first['Requested_By']}
-Class                : {first['Class']}
-Subclass             : {first['Subclass']}
-Reason               : {first['Reason']}
+Request ID              : {first['Request_ID']}
+Date & Time             : {first['Date'].strftime("%Y-%m-%d %H:%M:%S")}
+Mill                    : {first['Mill']}
+Department              : {first['Department']}
+Requested By (Dept)     : {first['Requested_By_dept']}
+Requested By (Store)    : {first['Requested_By']}
+Requester Email         : {first['Requester_Email']}
+Class                   : {first['Class']}
+Subclass                : {first['Subclass']}
+Reason                  : {first['Reason']}
+Status                  : {first['Status']}
 
 Materials ({len(all_data)} total):
 {material_rows}
 """
+
     msg = MIMEText(body)
-    msg["Subject"] = f"Material Request {first['Request_ID']}"
+    msg["Subject"] = f"Material Request {first['Request_ID']} | {first['Mill']} | {first['Department']}"
     msg["From"] = SMTP_EMAIL
     msg["To"] = ", ".join(ADMIN_EMAILS)
 

@@ -114,23 +114,36 @@ def write_log(user, action):
         df = pd.concat([old, df], ignore_index=True)
     df.to_excel(LOG_FILE, index=False)
 
-def send_admin_email(data):
+def send_admin_email(all_data):
+    # Build a row for each material
+    material_rows = ""
+    for i, d in enumerate(all_data, 1):
+        material_rows += f"""
+  Material {i}:
+    Machine    : {d['Machine']}
+    Attributes : {d['Attributes']}
+    Unit       : {d['Unit']}
+"""
+
+    # Common fields come from the first entry
+    first = all_data[0]
     body = f"""
 Material Creation Request
 
-Request ID: {data['Request_ID']}
-Mill: {data['Mill']}
-Department: {data['Department']}
-Requested By: {data['Requested_By']}
-Machine: {data['Machine']}
-Class: {data['Class']}
-Subclass: {data['Subclass']}
-Attributes: {data['Attributes']}
-Unit: {data['Unit']}
-Reason: {data['Reason']}
+Request ID           : {first['Request_ID']}
+Mill                 : {first['Mill']}
+Department           : {first['Department']}
+Requested By (Dept)  : {first['Requested_By_dept']}
+Requested By (Store) : {first['Requested_By']}
+Class                : {first['Class']}
+Subclass             : {first['Subclass']}
+Reason               : {first['Reason']}
+
+Materials ({len(all_data)} total):
+{material_rows}
 """
     msg = MIMEText(body)
-    msg["Subject"] = f"Material Request {data['Request_ID']}"
+    msg["Subject"] = f"Material Request {first['Request_ID']}"
     msg["From"] = SMTP_EMAIL
     msg["To"] = ", ".join(ADMIN_EMAILS)
 
@@ -258,33 +271,38 @@ if menu == "Create Request":
         else:
             request_id = generate_request_id()
 
+            all_data = []  # collect all material rows
+
             for machine, attr, unit in materials:
                 if not machine or not attr:
                     continue
 
                 data = {
-                    "Request_ID":request_id,
-                    "Date":datetime.now(),
-                    "Mill":mill,
-                    "Department":dept,
-                    "Requested_By_dept":req_by_dept,
-                    "Requested_By":req_by,
-                    "Requester_Email":req_mail,
-                    "Machine":machine,
-                    "Class":selected_class,
-                    "Subclass":subclass,
-                    "Attributes":attr,
-                    "Unit":unit,
-                    "Reason":reason,
-                    "Status":"Pending"
+                    "Request_ID": request_id,
+                    "Date": datetime.now(),
+                    "Mill": mill,
+                    "Department": dept,
+                    "Requested_By_dept": req_by_dept,
+                    "Requested_By": req_by,
+                    "Requester_Email": req_mail,
+                    "Machine": machine,
+                    "Class": selected_class,
+                    "Subclass": subclass,
+                    "Attributes": attr,
+                    "Unit": unit,
+                    "Reason": reason,
+                    "Status": "Pending"
                 }
 
                 save_request(data)
+                all_data.append(data)  # accumulate each material
 
-            send_admin_email(data)
-            write_log(req_by,f"Submitted {request_id}")
-
-            st.success(f"Request {request_id} submitted")
+            if all_data:
+                send_admin_email(all_data)  # send ONCE with ALL materials
+                write_log(req_by, f"Submitted {request_id}")
+                st.success(f"Request {request_id} submitted")
+            else:
+                st.error("Please fill in Machine and Attributes for at least one material.")
 
 # -----------------------------
 # ADMIN PANEL

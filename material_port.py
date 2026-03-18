@@ -236,7 +236,6 @@ for i, mat in enumerate(st.session_state.materials):
         st.session_state.materials[i]["attr"] = st.text_input(
             f"Material {i+1}",
             value=mat["attr"],
-            placeholder="e.g. Length, Width, Diameter",
             key=f"attr_{i}"
         )
 

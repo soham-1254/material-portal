@@ -27,7 +27,7 @@ REQUEST_FILE = "material_requests.xlsx"
 LOG_FILE = "logs.xlsx"
 
 # -----------------------------
-# MAPPING DATA (UNCHANGED)
+# MAPPING DATA
 # -----------------------------
 DEPT_DEFAULT_MAP = {
     "Batching": ["002","023"],
@@ -125,6 +125,7 @@ Machine: {data['Machine']}
 Class: {data['Class']}
 Subclass: {data['Subclass']}
 Attributes: {data['Attributes']}
+Unit: {data['Unit']}
 Reason: {data['Reason']}
 """
     msg = MIMEText(body)
@@ -143,15 +144,10 @@ def get_subclass_options(mill, dept, selected_class):
 
     if selected_class == "002":
         keywords = DEPT_KEYWORDS.get(dept, [])
-
         if not keywords:
             return ["CL_FACTORY_CLASS"]
 
-        filtered = [
-            s for s in pool
-            if any(k in s for k in keywords)
-        ]
-
+        filtered = [s for s in pool if any(k in s for k in keywords)]
         return filtered if filtered else ["CL_FACTORY_CLASS"]
 
     return pool
@@ -172,11 +168,15 @@ menu = st.sidebar.selectbox(
 if menu == "Create Request":
     st.title("Material Creation Form")
 
-    col1, col2 = st.columns(2)
+    col1,col2 = st.columns(2)
 
     with col1:
         mill = st.selectbox("Mill",["MIJM","SGJM","SHJM","SSKT"])
-        dept = st.selectbox("Department", sorted(DEPT_DEFAULT_MAP.keys()))
+
+        dept = st.selectbox(
+            "Department",
+            sorted(list(DEPT_DEFAULT_MAP.keys()))
+        )
 
         req_by_dept = st.text_input(
             " Requested By (Depertment)",
@@ -199,7 +199,7 @@ if menu == "Create Request":
 
         selected_class = st.selectbox("Class", class_options)
 
-        subclass_options = get_subclass_options(mill, dept, selected_class)
+        subclass_options = get_subclass_options(mill,dept,selected_class)
 
         subclass = st.selectbox(
             "Subclass",
@@ -208,7 +208,7 @@ if menu == "Create Request":
         )
 
     # -----------------------------
-    # MULTIPLE MATERIALS
+    # MATERIALS WITH UNIT
     # -----------------------------
     st.subheader("Add Material(s)")
 
@@ -224,19 +224,30 @@ if menu == "Create Request":
     for i in range(num_materials):
         st.markdown(f"### Material {i+1}")
 
-        machine = st.text_input(
-            f" Machine",
-            placeholder="e.g. General, 030BC021, 040D2005",
-            key=f"machine_{i}"
-        )
+        colA, colB, colC = st.columns(3)
 
-        attr = st.text_input(
-            f"9. Material Attributes",
-            placeholder="e.g. Length, Width , Diameter",
-            key=f"attr_{i}"
-        )
+        with colA:
+            machine = st.text_input(
+                " Machine",
+                placeholder="e.g. General, 030BC021, 040D2005",
+                key=f"machine_{i}"
+            )
 
-        materials.append((machine, attr))
+        with colB:
+            attr = st.text_input(
+                "9. Material Attributes",
+                placeholder="e.g. Length, Width , Diameter",
+                key=f"attr_{i}"
+            )
+
+        with colC:
+            unit = st.selectbox(
+                "Unit",
+                ["SET", "Pcs", "L", "Kg"],
+                key=f"unit_{i}"
+            )
+
+        materials.append((machine, attr, unit))
 
     reason = st.text_area("Reason for new material creation")
 
@@ -246,40 +257,44 @@ if menu == "Create Request":
         else:
             request_id = generate_request_id()
 
-            for machine, attr in materials:
+            for machine, attr, unit in materials:
                 if not machine or not attr:
                     continue
 
                 data = {
-                    "Request_ID": request_id,
-                    "Date": datetime.now(),
-                    "Mill": mill,
-                    "Department": dept,
-                    "Requested_By_dept": req_by_dept,
-                    "Requested_By": req_by,
-                    "Requester_Email": req_mail,
-                    "Machine": machine,
-                    "Class": selected_class,
-                    "Subclass": subclass,
-                    "Attributes": attr,
-                    "Reason": reason,
-                    "Status": "Pending"
+                    "Request_ID":request_id,
+                    "Date":datetime.now(),
+                    "Mill":mill,
+                    "Department":dept,
+                    "Requested_By_dept":req_by_dept,
+                    "Requested_By":req_by,
+                    "Requester_Email":req_mail,
+                    "Machine":machine,
+                    "Class":selected_class,
+                    "Subclass":subclass,
+                    "Attributes":attr,
+                    "Unit":unit,
+                    "Reason":reason,
+                    "Status":"Pending"
                 }
 
                 save_request(data)
 
             send_admin_email(data)
-            write_log(req_by, f"Submitted {request_id}")
+            write_log(req_by,f"Submitted {request_id}")
 
             st.success(f"Request {request_id} submitted")
 
 # -----------------------------
-# ADMIN PANEL & LOGS SAME AS YOURS
+# ADMIN PANEL
 # -----------------------------
 elif menu == "Admin Panel":
     st.title("Admin Panel")
-    st.info("No changes done here (same as your original)")
+    st.info("No changes here")
 
+# -----------------------------
+# LOGS
+# -----------------------------
 elif menu == "Logs":
     st.title("Logs")
     if os.path.exists(LOG_FILE):

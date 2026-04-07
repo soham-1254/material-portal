@@ -123,6 +123,7 @@ def send_admin_email(all_data):
   Material {i}:
     Material Name   : {d['Material_Name']}
     Machine         : {d['Machine']}
+    Machine Zone    : {d['Machine_Zone']}
     Attributes      : {d['Attributes']}
     Unit            : {d['Unit']}
     Material Type   : {d['Material_Type']}
@@ -157,11 +158,14 @@ Materials ({len(all_data)} total):
     msg["From"] = SMTP_EMAIL
     msg["To"] = ", ".join(ADMIN_EMAILS)
 
-    server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-    server.starttls()
-    server.login(SMTP_EMAIL, SMTP_PASSWORD)
-    server.sendmail(SMTP_EMAIL, ADMIN_EMAILS, msg.as_string())
-    server.quit()
+    try:
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        server.sendmail(SMTP_EMAIL, ADMIN_EMAILS, msg.as_string())
+        server.quit()
+    except Exception as e:
+        st.warning(f"Email could not be sent: {e}")
 
 def get_subclass_options(mill, dept, selected_class):
     pool = SUBCLASS_DATA.get(selected_class, [])
@@ -231,24 +235,30 @@ if menu == "Create Request":
     for i in range(num_materials):
         st.markdown(f"#### Material {i+1}")
 
-        # Row 1: existing fields
-        colA, colB, colC, colD = st.columns(4)
+        # Row 1: Added Machine Zone here
+        colA, colB, col_zone, colC, colD = st.columns(5)
         with colA:
             material_name = st.text_input(
-                "Material Name",
-                placeholder="e.g. Bearing, Belt, Oil Filter",
+                "Material Name*",
+                placeholder="e.g. Bearing",
                 key=f"material_name_{i}"
             )
         with colB:
             machine = st.text_input(
-                "Machine",
-                placeholder="e.g. General, 030BC021",
+                "Machine*",
+                placeholder="e.g. 030BC021",
                 key=f"machine_{i}"
+            )
+        with col_zone:
+            machine_zone = st.text_input(
+                "Machine Zone*",
+                placeholder="e.g. Zone A / Line 1",
+                key=f"zone_{i}"
             )
         with colC:
             attr = st.text_input(
-                "Material Attributes",
-                placeholder="e.g. Length, Width, Diameter",
+                "Material Attributes*",
+                placeholder="e.g. Diameter",
                 key=f"attr_{i}"
             )
         with colD:
@@ -258,21 +268,21 @@ if menu == "Create Request":
                 key=f"unit_{i}"
             )
 
-        # Row 2: new fields
+        # Row 2: remaining fields
         colE, colF, colG, colH = st.columns(4)
         with colE:
             material_type = st.text_input(
-                "Material Type",
+                "Material Type*",
                 key=f"mat_type_{i}"
             )
         with colF:
             material_group = st.text_input(
-                "Material Group",
+                "Material Group*",
                 key=f"mat_group_{i}"
             )
         with colG:
             hsn_code = st.text_input(
-                "HSN Code",
+                "HSN Code*",
                 placeholder="e.g. 84819090",
                 key=f"hsn_{i}"
             )
@@ -284,22 +294,24 @@ if menu == "Create Request":
 
         st.divider()
 
-        materials.append((material_name, machine, attr, unit,
+        materials.append((material_name, machine, machine_zone, attr, unit,
                           material_type, material_group, hsn_code, ref_material))
 
-    reason = st.text_area("Reason for new material creation")
+    reason = st.text_area("Reason for new material creation*")
 
     if st.button("Submit Request"):
         if not mill or not dept or not req_by or not req_mail or "@" not in req_mail or not reason:
-            st.error("All fields mandatory")
+            st.error("Header information and Reason are mandatory")
         else:
             request_id = generate_request_id()
             all_data = []
 
-            for (material_name, machine, attr, unit,
+            for (material_name, machine, machine_zone, attr, unit,
                  material_type, material_group, hsn_code, ref_material) in materials:
-                if not material_name or not machine or not attr or not material_type or not material_group or not hsn_code:
-                    st.error(f"Material Name, Machine, Attributes, Material Type, Material Group and HSN Code are all mandatory.")
+                
+                # Added machine_zone to the mandatory check
+                if not material_name or not machine or not machine_zone or not attr or not material_type or not material_group or not hsn_code:
+                    st.error(f"Material {materials.index((material_name, machine, machine_zone, attr, unit, material_type, material_group, hsn_code, ref_material))+1}: All fields marked with * are mandatory.")
                     st.stop()
 
                 data = {
@@ -312,6 +324,7 @@ if menu == "Create Request":
                     "Requester_Email": req_mail,
                     "Material_Name": material_name,
                     "Machine": machine,
+                    "Machine_Zone": machine_zone, # Added to dictionary
                     "Class": selected_class,
                     "Subclass": subclass,
                     "Attributes": attr,
@@ -330,9 +343,9 @@ if menu == "Create Request":
             if all_data:
                 send_admin_email(all_data)
                 write_log(req_by, f"Submitted {request_id}")
-                st.success(f"Request {request_id} submitted")
+                st.success(f"Request {request_id} submitted and emailed to admins.")
             else:
-                st.error("Please fill in Material Name, Machine and Attributes for at least one material.")
+                st.error("Please fill in material details.")
 
 # -----------------------------
 # ADMIN PANEL

@@ -24,17 +24,37 @@ ADMIN_EMAILS = [
 REQUEST_FILE = "material_requests.xlsx"
 LOG_FILE = "logs.xlsx"
 
-# New Dropdown Lists
+# UPDATED DROPDOWN LISTS
 MATERIAL_TYPES = ["Select", "ZCON", "ZERS", "ZFGS", "ZNSN", "ZPKG", "ZRJU", "ZROW", "ZRSP", "ZSER", "ZSFG", "ZUBN"]
+
 MATERIAL_GROUPS = [
-    "Select", "SC01", "SC02", "SC03", "SC04", "SC05", "SC06", "SC07", "SC08", "SC09", "SC10", 
-    "SC11", "SC12", "SC13", "SC14", "SC15", "SC16", "SC17", "SC18", "SC20", "SC21", "SC28", 
-    "SC31", "SC32", "SC33", "SC34", "SC35", "SC36", "SC37", "SC38", "SC39", "SC40", "SC41", 
-    "SC42", "SC43", "SC44", "SC45", "SC46", "SC48", "SC49", "SC50", "SC51", "SC52", "SC53", 
-    "SC54", "SC55", "SC56", "SC57", "SC58", "SC59", "SC60", "SC61", "SC62", "SC63", "SC64", 
-    "SC65", "SC66", "SC67", "SC68", "SC71", "SC72", "SC78", "SC81", "SC82", "SC83", "SC84", 
-    "SC85", "SC86", "SC87", "SF01", "SF02", "SF03", "SF04", "SF05", "SF06", "SF07", "SF08", 
-    "SF09", "SF10", "SF11", "SF12", "SF13", "SF14", "SV01", "SV02"
+    "Select", "RJ01-Raw Jute", "SC01-Bearing", "SC02-Beltings", "SC03-Bolts & Nuts", 
+    "SC04-Screw Wood Screws", "SC05-Rivet/Wiren Ail", "SC06-Chains & Springs", 
+    "SC07-Tools", "SC08-Pipes/Pipe Fittings", "SC09-Iron/Steel Materials", 
+    "SC10-Woods", "SC11-Lubricants", "SC12-Materials", "SC13-Electrical Goods - I", 
+    "SC14-Electrical Goods - I", "SC15-Building Materials", "SC16-Pinions", 
+    "SC17-Generals - I", "SC18-Generals - Ii", "SC20-Stationary & Printin", 
+    "SC21-Dispensary", "SC28-C.I. Materials (P/H)", "SC31-Batching", 
+    "SC32-Carding", "SC33-Drawing", "SC34-Roving", "SC35-Spining", 
+    "SC36-Winding", "SC37-Beaming/Sizing", "SC38-Weaving/Sizing", 
+    "SC39-Spares For One Mac L", "SC40-Boiler/Furnace", "SC41-Broad Loom", 
+    "SC42-Spare (Pigmy Pallet)", "SC43-Misc Machinary Parts", 
+    "SC44-Heavy Stores & Machi", "SC45-Spares Of A.C.B.", "SC46-S4A Loom", 
+    "SC48-Rapier Loom", "SC49-Computer Hardware", "SC50-Furniture", 
+    "SC51-D.G. Set", "SC52-Fork Lifter Items", "SC53-SPROCKET", "SC54-Spares", 
+    "SC55-Paint", "SC56-Workshop Items", "SC57-Accessories", 
+    "SC58-Air Compressor Parts", "SC59-C.I. Material(N/L)", "SC60-Rope/Rod/Wire", 
+    "SC61-Bush", "SC62-Dye Material", "SC63-Meta Pin", "SC64-Sack Sewing", 
+    "SC65-Press", "SC66-SQC Materials", "SC67-Reeds", "SC68-Motors", 
+    "SC71-Cash Purchase", "SC72-Misc Stores - I", "SC78-Twisting", 
+    "SC81-Precision Winding", "SC82-Dornier Looms", "SC83-Production Materials", 
+    "SC84-Gill Pin", "SC85-Card Pin", "SC86-Packaging Materials", "SC87-Stud", 
+    "SF01-Emulsifiers", "SF02-Roll", "SF03-Pile", "SF04-Spun Yarn", 
+    "SF05-Winded Yarn", "SF06-PrecisionWinded Yarn", "SF07-Beam", 
+    "SF08-Loose Hessian Cloth", "SF09-Loose Sacking Cloth", "SF10-Dornier", 
+    "SF11-Loose Unbrand HS Bag", "SF12-Loose Unbrand Sack B", 
+    "SF13-Loose Branded HS Bag", "SF14-Loose Brand Sack Bag", 
+    "SV01-Services Group", "SV02-Service Group 2"
 ]
 
 # -----------------------------
@@ -104,11 +124,11 @@ def send_admin_email(all_data):
         material_rows += f"\n  Material {i}:\n    Name: {d['Material_Name']}\n    Machine: {d['Machine']}\n    Zone: {d['Machine_Zone']}\n    Type: {d['Material_Type']}\n    Group: {d['Material_Group']}\n    HSN: {d['HSN_Code']}\n"
 
     body = f"Material Request {first['Request_ID']}\nMill: {first['Mill']}\nDept: {first['Department']}\n{material_rows}"
-    msg = MIMEText(body); msg["Subject"] = f"Request {first['Request_ID']}"; msg["From"] = SMTP_EMAIL; msg["To"] = ", ".join(ADMIN_EMAILS)
+    msg = MIMEText(body); msg["Subject"] = f"Request {first['Request_ID']} | {first['Mill']} | {first['Department']}"; msg["From"] = SMTP_EMAIL; msg["To"] = ", ".join(ADMIN_EMAILS)
     try:
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT); server.starttls(); server.login(SMTP_EMAIL, SMTP_PASSWORD)
         server.sendmail(SMTP_EMAIL, ADMIN_EMAILS, msg.as_string()); server.quit()
-    except Exception as e: st.warning(f"Email failed: {e}")
+    except Exception as e: st.warning(f"Email failed to send: {e}")
 
 def get_subclass_options(dept, selected_class):
     pool = SUBCLASS_DATA.get(selected_class, [])

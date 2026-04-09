@@ -24,7 +24,6 @@ ADMIN_EMAILS = [
 REQUEST_FILE = "material_requests.xlsx"
 LOG_FILE = "logs.xlsx"
 
-# UPDATED DROPDOWN LISTS
 MATERIAL_TYPES = ["Select", "ZCON", "ZERS", "ZFGS", "ZNSN", "ZPKG", "ZRJU", "ZROW", "ZRSP", "ZSER", "ZSFG", "ZUBN"]
 
 MATERIAL_GROUPS = [
@@ -57,9 +56,6 @@ MATERIAL_GROUPS = [
     "SV01-Services Group", "SV02-Service Group 2"
 ]
 
-# -----------------------------
-# MAPPING DATA
-# -----------------------------
 DEPT_DEFAULT_MAP = {
     "Batching": ["002","023"], "Carding": ["002"], "Drawing": ["002"], 
     "Spinning": ["002"], "Winding": ["002"], "Twisting": ["002"], 
@@ -92,7 +88,7 @@ DEPT_KEYWORDS = {
 }
 
 # -----------------------------
-# HELPER FUNCTIONS
+# FUNCTIONS
 # -----------------------------
 def generate_request_id():
     if not os.path.exists(REQUEST_FILE): return "MAT-0001"
@@ -119,16 +115,63 @@ def write_log(user, action):
 
 def send_admin_email(all_data):
     first = all_data[0]
+    requester_email = first['Requester_Email']
+    all_recipients = ADMIN_EMAILS + [requester_email]
+    
     material_rows = ""
     for i, d in enumerate(all_data, 1):
-        material_rows += f"\n  Material {i}:\n    Name: {d['Material_Name']}\n    Machine: {d['Machine']}\n    Zone: {d['Machine_Zone']}\n    Type: {d['Material_Type']}\n    Group: {d['Material_Group']}\n    HSN: {d['HSN_Code']}\n"
+        material_rows += f"""
+Material {i}:
+------------------------------------------
+Material Name      : {d['Material_Name']}
+Machine            : {d['Machine']}
+Machine Zone       : {d['Machine_Zone']}
+Attributes         : {d['Attributes']}
+Unit               : {d['Unit']}
+Material Type      : {d['Material_Type']}
+Material Group     : {d['Material_Group']}
+HSN Code           : {d['HSN_Code']}
+Reference Material : {d['Ref_Material']}
+"""
 
-    body = f"Material Request {first['Request_ID']}\nMill: {first['Mill']}\nDept: {first['Department']}\n{material_rows}"
-    msg = MIMEText(body); msg["Subject"] = f"Request {first['Request_ID']} | {first['Mill']} | {first['Department']}"; msg["From"] = SMTP_EMAIL; msg["To"] = ", ".join(ADMIN_EMAILS)
+    body = f"""
+NEW MATERIAL MASTER REQUEST
+==========================================
+Request ID          : {first['Request_ID']}
+Date & Time         : {first['Date'].strftime("%Y-%m-%d %H:%M:%S")}
+
+HEADER DETAILS
+==========================================
+Mill                : {first['Mill']}
+Department          : {first['Department']}
+Class               : {first['Class']}
+Subclass            : {first['Subclass']}
+
+REQUESTER INFO
+==========================================
+Requested By (Dept) : {first['Requested_By_dept']}
+Requested By (Store): {first['Requested_By']}
+Requester Email     : {requester_email}
+Reason for Creation : {first['Reason']}
+
+MATERIAL LIST ({len(all_data)} items)
+==========================================
+{material_rows}
+"""
+
+    msg = MIMEText(body)
+    msg["Subject"] = f"Request {first['Request_ID']} | {first['Mill']} | {first['Department']}"
+    msg["From"] = SMTP_EMAIL
+    msg["To"] = ", ".join(all_recipients)
+
     try:
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT); server.starttls(); server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.sendmail(SMTP_EMAIL, ADMIN_EMAILS, msg.as_string()); server.quit()
-    except Exception as e: st.warning(f"Email failed to send: {e}")
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        server.sendmail(SMTP_EMAIL, all_recipients, msg.as_string())
+        server.quit()
+    except Exception as e:
+        st.warning(f"Submission recorded but email failed: {e}")
 
 def get_subclass_options(dept, selected_class):
     pool = SUBCLASS_DATA.get(selected_class, [])
@@ -148,17 +191,17 @@ if menu == "Create Request":
     st.title("Material Creation Form")
     c1, c2 = st.columns(2)
     with c1:
-        mill = st.selectbox("Mill", ["MIJM","SGJM","SHJM","SSKT"])
-        dept = st.selectbox("Department", sorted(list(DEPT_DEFAULT_MAP.keys())))
-        req_by_dept = st.text_input("Requested By (Department)")
-        req_by = st.text_input("Requested By (Store)")
-        req_mail = st.text_input("Mail Id of Requester")
+        mill = st.selectbox("Mill*", ["MIJM","SGJM","SHJM","SSKT"])
+        dept = st.selectbox("Department*", sorted(list(DEPT_DEFAULT_MAP.keys())))
+        req_by_dept = st.text_input("Requested By (Department)*")
+        req_by = st.text_input("Requested By (Store)*")
+        req_mail = st.text_input("Mail Id of Requester*")
     with c2:
         default_classes = DEPT_DEFAULT_MAP.get(dept, ["002"])
         class_options = sorted(list(set(default_classes + GLOBAL_CLASSES)))
-        selected_class = st.selectbox("Class", class_options)
+        selected_class = st.selectbox("Class*", class_options)
         sub_opts = get_subclass_options(dept, selected_class)
-        subclass = st.selectbox("Subclass", sub_opts)
+        subclass = st.selectbox("Subclass*", sub_opts)
 
     st.subheader("Add Material(s)")
     num_materials = st.number_input("Number of Materials", 1, 100, 1)
@@ -166,20 +209,18 @@ if menu == "Create Request":
 
     for i in range(num_materials):
         st.markdown(f"#### Material {i+1}")
-        # Row 1
         colA, colB, colZone, colC, colD = st.columns(5)
         m_name = colA.text_input("Material Name*", key=f"name_{i}")
         m_mach = colB.text_input("Machine*", key=f"mach_{i}")
         m_zone = colZone.text_input("Machine Zone*", key=f"zone_{i}")
         m_attr = colC.text_input("Attributes*", key=f"attr_{i}")
-        m_unit = colD.selectbox("Unit", ["SET", "Pcs", "L", "Kg", "M", "NOS", "MT", "Box"], key=f"unit_{i}")
+        m_unit = colD.selectbox("Unit*", ["SET", "Pcs", "L", "Kg", "M", "NOS", "MT", "Box"], key=f"unit_{i}")
         
-        # Row 2: Dropdowns for Type and Group
         colE, colF, colG, colH = st.columns(4)
         m_type = colE.selectbox("Material Type*", MATERIAL_TYPES, key=f"type_{i}")
         m_group = colF.selectbox("Material Group*", MATERIAL_GROUPS, key=f"group_{i}")
         m_hsn = colG.text_input("HSN Code*", key=f"hsn_{i}")
-        m_ref = colH.text_input("Ref Material", key=f"ref_{i}")
+        m_ref = colH.text_input("Reference Material*", key=f"ref_{i}")
         
         st.divider()
         materials_data.append((m_name, m_mach, m_zone, m_attr, m_unit, m_type, m_group, m_hsn, m_ref))
@@ -187,16 +228,19 @@ if menu == "Create Request":
     reason = st.text_area("Reason for creation*")
 
     if st.button("Submit Request"):
-        # Basic validation
-        if not all([mill, dept, req_by, req_mail, reason]) or "@" not in req_mail:
-            st.error("Header fields and Reason are mandatory.")
+        # 1. Header Validation
+        if not all([mill, dept, req_by_dept, req_by, req_mail, reason]):
+            st.error("All Header fields and the Reason for creation are mandatory.")
+        elif "@" not in req_mail:
+            st.error("Please enter a valid email address.")
         else:
             req_id = generate_request_id()
             final_list = []
-            for row in materials_data:
-                # Check for "Select" or empty strings in mandatory fields
-                if "Select" in [row[5], row[6]] or not all([row[0], row[1], row[2], row[3], row[7]]):
-                    st.error("Please fill all mandatory fields (*) for all materials.")
+            
+            # 2. Material Validation
+            for idx, row in enumerate(materials_data):
+                if "Select" in [row[5], row[6]] or not all([row[0], row[1], row[2], row[3], row[7], row[8]]):
+                    st.error(f"Please fill all mandatory fields (*) for Material {idx+1}.")
                     st.stop()
                 
                 d = {
@@ -205,7 +249,7 @@ if menu == "Create Request":
                     "Material_Name": row[0], "Machine": row[1], "Machine_Zone": row[2],
                     "Class": selected_class, "Subclass": subclass, "Attributes": row[3],
                     "Unit": row[4], "Material_Type": row[5], "Material_Group": row[6],
-                    "HSN_Code": row[7], "Ref_Material": row[8] if row[8] else "N/A",
+                    "HSN_Code": row[7], "Ref_Material": row[8],
                     "Reason": reason, "Status": "Pending"
                 }
                 save_request(d)
@@ -214,7 +258,7 @@ if menu == "Create Request":
             if final_list:
                 send_admin_email(final_list)
                 write_log(req_by, f"Submitted {req_id}")
-                st.success(f"Request {req_id} submitted successfully!")
+                st.success(f"SUCCESS: Request {req_id} submitted. Check your email for a copy.")
 
 elif menu == "Logs":
     st.title("Logs")

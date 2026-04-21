@@ -5,17 +5,13 @@ from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
 import pymongo
-from dotenv import load_dotenv
 
 # -----------------------------
 # CONFIG & DATABASE SETUP
 # -----------------------------
-# Load environment variables from .env file
-load_dotenv()
-
-# Email Config (Using .env for security)
-SMTP_EMAIL = os.getenv("SMTP_EMAIL", "prakhar.chandel@jute-india.com")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "") # Put your new App Password in your .env file!
+# Hardcoded credentials for Streamlit Cloud deployment
+SMTP_EMAIL = "prakhar.chandel@jute-india.com"
+SMTP_PASSWORD = "yees jhwl rnxj jeyy" 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
@@ -27,15 +23,21 @@ ADMIN_EMAILS = [
     "prakhar.chandel@jute-india.com"
 ]
 
-# MongoDB Cloud Connection
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+# Your specific MongoDB Atlas Connection String
+MONGO_URI = "mongodb+srv://Finisher_card_sliver:Sohampanda@cluster0.mjn5qdx.mongodb.net/?retryWrites=true&w=majority"
+
 try:
-    client = pymongo.MongoClient(MONGO_URI)
+    # Connect to MongoDB Atlas
+    client = pymongo.MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     db = client["form_to_sap"]
     request_collection = db["material_requests"]
     log_collection = db["logs"]
+    
+    # Test connection
+    client.server_info() 
 except Exception as e:
     st.error(f"Database Connection Error: {e}")
+    st.info("Ensure your IP is whitelisted in MongoDB Atlas (Network Access -> Allow Access from Anywhere).")
 
 # -----------------------------
 # LISTS & MAPPINGS
@@ -107,24 +109,20 @@ DEPT_KEYWORDS = {
 # FUNCTIONS
 # -----------------------------
 def generate_request_id():
-    # Find the latest document in MongoDB by sorting Request_ID descending
-    last_doc = request_collection.find_one(sort=[("Request_ID", pymongo.DESCENDING)])
-    if not last_doc or "Request_ID" not in last_doc: 
-        return "MAT-0001"
-    
-    last_id = last_doc["Request_ID"]
     try:
+        last_doc = request_collection.find_one(sort=[("Request_ID", pymongo.DESCENDING)])
+        if not last_doc or "Request_ID" not in last_doc: 
+            return "MAT-0001"
+        last_id = last_doc["Request_ID"]
         number = int(last_id.split("-")[1]) + 1
         return f"MAT-{number:04d}"
     except:
         return "MAT-0001"
 
 def save_request(data):
-    # Insert safely into MongoDB Cloud
     request_collection.insert_one(data)
 
 def write_log(user, action):
-    # Insert securely into MongoDB Cloud
     log_entry = {
         "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
         "User": user, 
@@ -133,57 +131,18 @@ def write_log(user, action):
     log_collection.insert_one(log_entry)
 
 def send_admin_email(all_data):
-    if not SMTP_PASSWORD:
-        st.warning("Email not sent: Please add your SMTP_PASSWORD to your .env file.")
-        return
-
     first = all_data[0]
     requester_email = first['Requester_Email']
     all_recipients = ADMIN_EMAILS + [requester_email]
     
     material_rows = ""
     for i, d in enumerate(all_data, 1):
-        material_rows += f"""
-Material {i}:
-------------------------------------------
-Material Name      : {d['Material_Name']}
-Machine            : {d['Machine']}
-Machine Zone       : {d['Machine_Zone']}
-Attributes         : {d['Attributes']}
-Unit               : {d['Unit']}
-Material Type      : {d['Material_Type']}
-Material Group     : {d['Material_Group']}
-HSN Code           : {d['HSN_Code']}
-Reference Material : {d['Ref_Material']}
-"""
+        material_rows += f"\nMaterial {i}:\nName: {d['Material_Name']}\nType: {d['Material_Type']}\nGroup: {d['Material_Group']}\n"
 
-    body = f"""
-NEW MATERIAL MASTER REQUEST
-==========================================
-Request ID          : {first['Request_ID']}
-Date & Time         : {first['Date'].strftime("%Y-%m-%d %H:%M:%S")}
-
-HEADER DETAILS
-==========================================
-Mill                : {first['Mill']}
-Department          : {first['Department']}
-Class               : {first['Class']}
-Subclass            : {first['Subclass']}
-
-REQUESTER INFO
-==========================================
-Requested By (Dept) : {first['Requested_By_dept']}
-Requested By (Store): {first['Requested_By']}
-Requester Email     : {requester_email}
-Reason for Creation : {first['Reason']}
-
-MATERIAL LIST ({len(all_data)} items)
-==========================================
-{material_rows}
-"""
+    body = f"NEW MATERIAL REQUEST: {first['Request_ID']}\nMill: {first['Mill']}\nDept: {first['Department']}\n{material_rows}"
 
     msg = MIMEText(body)
-    msg["Subject"] = f"Request {first['Request_ID']} | {first['Mill']} | {first['Department']}"
+    msg["Subject"] = f"Request {first['Request_ID']} | {first['Mill']}"
     msg["From"] = SMTP_EMAIL
     msg["To"] = ", ".join(all_recipients)
 
@@ -220,93 +179,57 @@ if menu == "Create Request":
         req_by = st.text_input("Requested By (Store)*")
         req_mail = st.text_input("Mail Id of Requester*")
     with c2:
-        default_classes = DEPT_DEFAULT_MAP.get(dept, ["002"])
-        class_options = sorted(list(set(default_classes + GLOBAL_CLASSES)))
+        class_options = sorted(list(set(DEPT_DEFAULT_MAP.get(dept, ["002"]) + GLOBAL_CLASSES)))
         selected_class = st.selectbox("Class*", class_options)
-        sub_opts = get_subclass_options(dept, selected_class)
-        subclass = st.selectbox("Subclass*", sub_opts)
+        subclass = st.selectbox("Subclass*", get_subclass_options(dept, selected_class))
 
-    st.subheader("Add Material(s)")
-    num_materials = st.number_input("Number of Materials", 1, 100, 1)
+    num_materials = st.number_input("Number of Materials", 1, 10, 1)
     materials_data = []
 
     for i in range(num_materials):
         st.markdown(f"#### Material {i+1}")
-        colA, colB, colZone, colC, colD = st.columns(5)
-        m_name = colA.text_input("Material Name*", key=f"name_{i}")
-        m_mach = colB.text_input("Machine*", key=f"mach_{i}")
-        m_zone = colZone.text_input("Machine Zone*", key=f"zone_{i}")
-        m_attr = colC.text_input("Attributes*", key=f"attr_{i}")
-        m_unit = colD.selectbox("Unit*", ["SET", "Pcs", "L", "Kg", "M", "NOS", "MT", "Box"], key=f"unit_{i}")
+        col1, col2, col3, col4 = st.columns(4)
+        m_name = col1.text_input("Name*", key=f"n_{i}")
+        m_mach = col2.text_input("Machine*", key=f"m_{i}")
+        m_attr = col3.text_input("Attributes*", key=f"a_{i}")
+        m_unit = col4.selectbox("Unit*", ["SET", "Pcs", "Kg", "NOS"], key=f"u_{i}")
         
-        colE, colF, colG, colH = st.columns(4)
-        m_type = colE.selectbox("Material Type*", MATERIAL_TYPES, key=f"type_{i}")
-        m_group = colF.selectbox("Material Group*", MATERIAL_GROUPS, key=f"group_{i}")
-        m_hsn = colG.text_input("HSN Code*", key=f"hsn_{i}")
-        m_ref = colH.text_input("Reference Material*", key=f"ref_{i}")
-        
-        st.divider()
-        materials_data.append((m_name, m_mach, m_zone, m_attr, m_unit, m_type, m_group, m_hsn, m_ref))
+        col5, col6, col7 = st.columns(3)
+        m_type = col5.selectbox("Type*", MATERIAL_TYPES, key=f"t_{i}")
+        m_group = col6.selectbox("Group*", MATERIAL_GROUPS, key=f"g_{i}")
+        m_hsn = col7.text_input("HSN*", key=f"h_{i}")
+        materials_data.append((m_name, m_mach, m_attr, m_unit, m_type, m_group, m_hsn))
 
     reason = st.text_area("Reason for creation*")
 
     if st.button("Submit Request"):
-        # 1. Header Validation
         if not all([mill, dept, req_by_dept, req_by, req_mail, reason]):
-            st.error("All Header fields and the Reason for creation are mandatory.")
-        elif "@" not in req_mail:
-            st.error("Please enter a valid email address.")
+            st.error("Fill all mandatory fields.")
         else:
             req_id = generate_request_id()
             final_list = []
-            
-            # 2. Material Validation
-            for idx, row in enumerate(materials_data):
-                if "Select" in [row[5], row[6]] or not all([row[0], row[1], row[2], row[3], row[7], row[8]]):
-                    st.error(f"Please fill all mandatory fields (*) for Material {idx+1}.")
-                    st.stop()
-                
-                # Create dictionary for MongoDB
+            for row in materials_data:
                 d = {
                     "Request_ID": req_id, "Date": datetime.now(), "Mill": mill, "Department": dept,
-                    "Requested_By_dept": req_by_dept, "Requested_By": req_by, "Requester_Email": req_mail,
-                    "Material_Name": row[0], "Machine": row[1], "Machine_Zone": row[2],
-                    "Class": selected_class, "Subclass": subclass, "Attributes": row[3],
-                    "Unit": row[4], "Material_Type": row[5], "Material_Group": row[6],
-                    "HSN_Code": row[7], "Ref_Material": row[8],
-                    "Reason": reason, "Status": "Pending"
+                    "Requested_By": req_by, "Requester_Email": req_mail, "Material_Name": row[0],
+                    "Machine": row[1], "Attributes": row[2], "Unit": row[3], "Material_Type": row[4],
+                    "Material_Group": row[5], "HSN_Code": row[6], "Status": "Pending", "Reason": reason
                 }
-                
-                # Save to MongoDB
                 save_request(d)
                 final_list.append(d)
+            
+            send_admin_email(final_list)
+            write_log(req_by, f"Submitted {req_id}")
+            st.success(f"Request {req_id} submitted!")
 
-            if final_list:
-                send_admin_email(final_list)
-                write_log(req_by, f"Submitted {req_id}")
-                st.success(f"SUCCESS: Request {req_id} submitted to Database. Check your email for a copy.")
-
-# NEW ADMIN PANEL SECTION
 elif menu == "Admin Panel":
-    st.title("Admin Control Panel")
-    st.subheader("Pending Material Requests")
-    
-    # Fetch all material requests from MongoDB, excluding the internal _id field
-    requests_data = list(request_collection.find({}, {"_id": 0}))
-    
-    if requests_data:
-        st.dataframe(pd.DataFrame(requests_data))
-    else:
-        st.info("No material requests have been submitted yet.")
+    st.title("Admin Panel")
+    data = list(request_collection.find({}, {"_id": 0}))
+    if data: st.dataframe(pd.DataFrame(data))
+    else: st.info("No requests.")
 
-# UPDATED LOGS SECTION
 elif menu == "Logs":
     st.title("System Logs")
-    
-    # Fetch all logs from MongoDB, excluding the internal _id field
-    logs_data = list(log_collection.find({}, {"_id": 0}))
-    
-    if logs_data:
-        st.dataframe(pd.DataFrame(logs_data))
-    else:
-        st.info("No logs have been recorded yet.")
+    logs = list(log_collection.find({}, {"_id": 0}))
+    if logs: st.dataframe(pd.DataFrame(logs))
+    else: st.info("No logs.")

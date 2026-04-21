@@ -47,65 +47,11 @@ except Exception as e:
 MATERIAL_TYPES = ["Select", "ZCON", "ZERS", "ZFGS", "ZNSN", "ZPKG", "ZRJU", "ZROW", "ZRSP", "ZSER", "ZSFG", "ZUBN"]
 MATERIAL_GROUPS = ["Select", "RJ01-Raw Jute", "SC01-Bearing", "SC02-Beltings", "SC03-Bolts & Nuts", "SC04-Screw Wood Screws", "SC05-Rivet/Wiren Ail", "SC06-Chains & Springs", "SC07-Tools", "SC08-Pipes/Pipe Fittings", "SC09-Iron/Steel Materials", "SC10-Woods", "SC11-Lubricants", "SC12-Materials", "SC13-Electrical Goods - I", "SC14-Electrical Goods - I", "SC15-Building Materials", "SC16-Pinions", "SC17-Generals - I", "SC18-Generals - Ii", "SC20-Stationary & Printin", "SC21-Dispensary", "SC28-C.I. Materials (P/H)", "SC31-Batching", "SC32-Carding", "SC33-Drawing", "SC34-Roving", "SC35-Spining", "SC36-Winding", "SC37-Beaming/Sizing", "SC38-Weaving/Sizing", "SC39-Spares For One Mac L", "SC40-Boiler/Furnace", "SC41-Broad Loom", "SC42-Spare (Pigmy Pallet)", "SC43-Misc Machinary Parts", "SC44-Heavy Stores & Machi", "SC45-Spares Of A.C.B.", "SC46-S4A Loom", "SC48-Rapier Loom", "SC49-Computer Hardware", "SC50-Furniture", "SC51-D.G. Set", "SC52-Fork Lifter Items", "SC53-SPROCKET", "SC54-Spares", "SC55-Paint", "SC56-Workshop Items", "SC57-Accessories", "SC58-Air Compressor Parts", "SC59-C.I. Material(N/L)", "SC60-Rope/Rod/Wire", "SC61-Bush", "SC62-Dye Material", "SC63-Meta Pin", "SC64-Sack Sewing", "SC65-Press", "SC66-SQC Materials", "SC67-Reeds", "SC68-Motors", "SC71-Cash Purchase", "SC72-Misc Stores - I", "SC78-Twisting", "SC81-Precision Winding", "SC82-Dornier Looms", "SC83-Production Materials", "SC84-Gill Pin", "SC85-Card Pin", "SC86-Packaging Materials", "SC87-Stud", "SF01-Emulsifiers", "SF02-Roll", "SF03-Pile", "SF04-Spun Yarn", "SF05-Winded Yarn", "SF06-PrecisionWinded Yarn", "SF07-Beam", "SF08-Loose Hessian Cloth", "SF09-Loose Sacking Cloth", "SF10-Dornier", "SF11-Loose Unbrand HS Bag", "SF12-Loose Unbrand Sack B", "SF13-Loose Branded HS Bag", "SF14-Loose Brand Sack Bag", "SV01-Services Group", "SV02-Service Group 2"]
 
-DEPT_DEFAULT_MAP = {
-
-    "Batching": ["002","023"], "Carding": ["002"], "Drawing": ["002"], 
-
-    "Spinning": ["002"], "Winding": ["002"], "Twisting": ["002"], 
-
-    "Beaming": ["002"], "Weaving": ["002"], "Sack Sewing": ["002"], 
-
-    "Finishing": ["002"], "Bail - Press": ["002"], "Workshop": ["002"], 
-
-    "Boiler/Furnace": ["002"], "Civil": ["002"], "Dispensary": ["001"], 
-
-    "EDP": ["002"], "General": ["002"], "Packaging Materials": ["002"], 
-
-    "Power House": ["002"], "Production Material": ["002"]
-
-}
-
-
-
+DEPT_DEFAULT_MAP = {"Batching": ["002","023"], "Carding": ["002"], "Drawing": ["002"], "Spinning": ["002"], "Winding": ["002"], "Twisting": ["002"], "Beaming": ["002"], "Weaving": ["002"], "Sack Sewing": ["002"], "Finishing": ["002"], "Bail - Press": ["002"], "Workshop": ["002"], "Boiler/Furnace": ["002"], "Civil": ["002"], "Dispensary": ["001"], "EDP": ["002"], "General": ["002"], "Packaging Materials": ["002"], "Power House": ["002"], "Production Material": ["002"]}
 GLOBAL_CLASSES = ["001","019","032"]
+SUBCLASS_DATA = {"001": ["CL_FACTORY_CLASS","FG_CLASS","JUTE_CLASS","CL_MATERIAL_CLASS"], "019": ["WC_STIL"], "032": ["PO_RELEASE","PR_RELEASE"], "023": ["BATCH_CLASS","FG_BATCH_CLASS","SPRDER_MAT_CLASS"], "002":["CL_CARD_MIJM","CL_CARD_SGJM","CL_CARD_SHJM","CL_CARD_ALL_MILLS","CL_COP_MIJM","CL_COP_SGJM","CL_COP_SHJM","CL_DRAW_MIJM","CL_DRAW_SGJM","CL_DRAW_SHJM","CL_DRAW_ALL_MILLS","CL_SOFT_MIJM","CL_SOFT_SGJM","CL_SOFT_SHJM","CL_SPIN_MIJM","CL_SPIN_SGJM","CL_SPIN_SHJM","CL_SPIN_ALL_MILLS","CL_SPOOL_MIJM","CL_SPOOL_SGJM","CL_SPOOL_SHJM","CL_SPREAD_MIJM","CL_SPREAD_SGJM","CL_SPREAD_SHJM","CL_WINDING_ALL_MILLS","CL_TWISTING_ALL_MILLS","CL_FACTORY_CLASS"]}
+DEPT_KEYWORDS = {"Batching":["SOFT","SPREAD"], "Carding":["CARD"], "Drawing":["DRAW"], "Spinning":["SPIN"], "Winding":["COP","SPOOL","WINDING"], "Twisting":["TWISTING"]}
 
-SUBCLASS_DATA = {
-
-    "001": ["CL_FACTORY_CLASS","FG_CLASS","JUTE_CLASS","CL_MATERIAL_CLASS"],
-
-    "019": ["WC_STIL"],
-
-    "032": ["PO_RELEASE","PR_RELEASE"],
-
-    "023": ["BATCH_CLASS","FG_BATCH_CLASS","SPRDER_MAT_CLASS"],
-
-    "002":[
-
-        "CL_CARD_MIJM","CL_CARD_SGJM","CL_CARD_SHJM","CL_CARD_ALL_MILLS",
-
-        "CL_COP_MIJM","CL_COP_SGJM","CL_COP_SHJM","CL_DRAW_MIJM","CL_DRAW_SGJM",
-
-        "CL_DRAW_SHJM","CL_DRAW_ALL_MILLS","CL_SOFT_MIJM","CL_SOFT_SGJM",
-
-        "CL_SOFT_SHJM","CL_SPIN_MIJM","CL_SPIN_SGJM","CL_SPIN_SHJM",
-
-        "CL_SPIN_ALL_MILLS","CL_SPOOL_MIJM","CL_SPOOL_SGJM","CL_SPOOL_SHJM",
-
-        "CL_SPREAD_MIJM","CL_SPREAD_SGJM","CL_SPREAD_SHJM","CL_WINDING_ALL_MILLS",
-
-        "CL_TWISTING_ALL_MILLS","CL_FACTORY_CLASS"
-
-    ]
-
-}
-
-DEPT_KEYWORDS = {
-
-    "Batching":["SOFT","SPREAD"], "Carding":["CARD"], "Drawing":["DRAW"],
-
-    "Spinning":["SPIN"], "Winding":["COP","SPOOL","WINDING"], "Twisting":["TWISTING"]
-
-}
 # -----------------------------
 # FUNCTIONS
 # -----------------------------

@@ -295,4 +295,18 @@ elif menu == "Admin Panel":
     requests_data = list(request_collection.find({}, {"_id": 0}))
     
     if requests_data:
-        st.dataframe(
+        st.dataframe(pd.DataFrame(requests_data))
+    else:
+        st.info("No material requests have been submitted yet.")
+
+# UPDATED LOGS SECTION
+elif menu == "Logs":
+    st.title("System Logs")
+    
+    # Fetch all logs from MongoDB, excluding the internal _id field
+    logs_data = list(log_collection.find({}, {"_id": 0}))
+    
+    if logs_data:
+        st.dataframe(pd.DataFrame(logs_data))
+    else:
+        st.info("No logs have been recorded yet.")

@@ -104,7 +104,7 @@ REASON FOR CREATION:
 ------------------------------------------
 {first['Reason']}
 
-ITEMIZED LIST:
+MATERIAL LIST:
 ==========================================
 {material_details_text}
 

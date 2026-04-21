@@ -83,6 +83,7 @@ Unit               : {d.get('Unit')}
 Material Type      : {d.get('Material_Type')}
 Material Group     : {d.get('Material_Group')}
 HSN Code           : {d.get('HSN_Code')}
+Reference No.      : {d.get('Reference_No')}
 ------------------------------------------
 """
 
@@ -159,24 +160,29 @@ if menu == "Create Request":
 
     for i in range(num_materials):
         st.markdown(f"#### Material {i+1}")
+        # Top row: 5 items (Name, Machine, Zone, Attributes, Unit)
         col1, col2, colZone, col3, col4 = st.columns(5)
         m_name = col1.text_input("Name*", key=f"n_{i}")
         m_mach = col2.text_input("Machine*", key=f"m_{i}")
-        m_zone = colZone.text_input("Machine Zone*", key=f"z_{i}") # FIXED: Added Machine Zone
+        m_zone = colZone.text_input("Machine Zone*", key=f"z_{i}")
         m_attr = col3.text_input("Attributes*", key=f"a_{i}")
         m_unit = col4.selectbox("Unit*", ["SET", "Pcs", "Kg", "NOS"], key=f"u_{i}")
         
-        col5, col6, col7 = st.columns(3)
+        # Bottom row: 4 items (Type, Group, HSN, Reference No.)
+        col5, col6, col7, col8 = st.columns(4) # FIXED: Changed to 4 columns to fit Reference No.
         m_type = col5.selectbox("Type*", MATERIAL_TYPES, key=f"t_{i}")
         m_group = col6.selectbox("Group*", MATERIAL_GROUPS, key=f"g_{i}")
         m_hsn = col7.text_input("HSN*", key=f"h_{i}")
-        materials_inputs.append((m_name, m_mach, m_zone, m_attr, m_unit, m_type, m_group, m_hsn))
+        m_ref = col8.text_input("Reference No.*", key=f"r_{i}") # FIXED: Added Reference No. field
+        
+        # Pass all 9 variables into the list
+        materials_inputs.append((m_name, m_mach, m_zone, m_attr, m_unit, m_type, m_group, m_hsn, m_ref))
 
     reason = st.text_area("Reason for creation*")
 
     if st.button("Submit Request"):
         if not all([mill, dept, req_by_dept, req_by, req_mail, reason]):
-            st.error("Fill all mandatory fields.")
+            st.error("Fill all mandatory header fields.")
         else:
             req_id = generate_request_id()
             final_list = []
@@ -193,12 +199,13 @@ if menu == "Create Request":
                     "Requester_Email": req_mail, 
                     "Material_Name": row[0],
                     "Machine": row[1], 
-                    "Machine_Zone": row[2], # FIXED: Included Machine Zone
+                    "Machine_Zone": row[2], 
                     "Attributes": row[3], 
                     "Unit": row[4], 
                     "Material_Type": row[5],
                     "Material_Group": row[6], 
                     "HSN_Code": row[7], 
+                    "Reference_No": row[8], # FIXED: Included Reference No. in DB save
                     "Status": "Pending", 
                     "Reason": reason
                 }

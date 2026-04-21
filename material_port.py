@@ -24,12 +24,20 @@ ADMIN_EMAILS = [
 
 MONGO_URI = "mongodb+srv://Finisher_card_sliver:Sohampanda@cluster0.mjn5qdx.mongodb.net/?retryWrites=true&w=majority"
 
-try:
+# --- THE FIX: Caching the Database Connection ---
+@st.cache_resource
+def init_db():
+    # This function will only run ONCE when the app starts
     client = pymongo.MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    client.server_info() # Test connection
+    return client
+
+try:
+    # Now it grabs the saved connection instantly without waiting!
+    client = init_db()
     db = client["form_to_sap"]
     request_collection = db["material_requests"]
     log_collection = db["logs"]
-    client.server_info() 
 except Exception as e:
     st.error(f"Database Connection Error: {e}")
 
@@ -160,7 +168,6 @@ if menu == "Create Request":
 
     for i in range(num_materials):
         st.markdown(f"#### Material {i+1}")
-        # Top row: 5 items (Name, Machine, Zone, Attributes, Unit)
         col1, col2, colZone, col3, col4 = st.columns(5)
         m_name = col1.text_input("Name*", key=f"n_{i}")
         m_mach = col2.text_input("Machine*", key=f"m_{i}")
@@ -168,14 +175,12 @@ if menu == "Create Request":
         m_attr = col3.text_input("Attributes*", key=f"a_{i}")
         m_unit = col4.selectbox("Unit*", ["SET", "Pcs", "Kg", "NOS"], key=f"u_{i}")
         
-        # Bottom row: 4 items (Type, Group, HSN, Reference No.)
-        col5, col6, col7, col8 = st.columns(4) # FIXED: Changed to 4 columns to fit Reference No.
+        col5, col6, col7, col8 = st.columns(4)
         m_type = col5.selectbox("Type*", MATERIAL_TYPES, key=f"t_{i}")
         m_group = col6.selectbox("Group*", MATERIAL_GROUPS, key=f"g_{i}")
         m_hsn = col7.text_input("HSN*", key=f"h_{i}")
-        m_ref = col8.text_input("Reference No.*", key=f"r_{i}") # FIXED: Added Reference No. field
+        m_ref = col8.text_input("Reference No.*", key=f"r_{i}") 
         
-        # Pass all 9 variables into the list
         materials_inputs.append((m_name, m_mach, m_zone, m_attr, m_unit, m_type, m_group, m_hsn, m_ref))
 
     reason = st.text_area("Reason for creation*")
@@ -205,7 +210,7 @@ if menu == "Create Request":
                     "Material_Type": row[5],
                     "Material_Group": row[6], 
                     "HSN_Code": row[7], 
-                    "Reference_No": row[8], # FIXED: Included Reference No. in DB save
+                    "Reference_No": row[8], 
                     "Status": "Pending", 
                     "Reason": reason
                 }

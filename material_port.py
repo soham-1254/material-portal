@@ -70,7 +70,6 @@ def send_admin_email(all_data):
     requester_email = first['Requester_Email']
     all_recipients = ADMIN_EMAILS + [requester_email]
     
-    # Building detailed material rows for the email
     material_details_text = ""
     for i, d in enumerate(all_data, 1):
         material_details_text += f"""
@@ -78,6 +77,7 @@ Material {i} Details:
 ------------------------------------------
 Material Name      : {d.get('Material_Name')}
 Machine            : {d.get('Machine')}
+Machine Zone       : {d.get('Machine_Zone')}
 Attributes         : {d.get('Attributes')}
 Unit               : {d.get('Unit')}
 Material Type      : {d.get('Material_Type')}
@@ -104,7 +104,7 @@ REASON FOR CREATION:
 ------------------------------------------
 {first['Reason']}
 
-MATERIAL LIST:
+ITEMIZED LIST:
 ==========================================
 {material_details_text}
 
@@ -159,9 +159,10 @@ if menu == "Create Request":
 
     for i in range(num_materials):
         st.markdown(f"#### Material {i+1}")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, colZone, col3, col4 = st.columns(5)
         m_name = col1.text_input("Name*", key=f"n_{i}")
         m_mach = col2.text_input("Machine*", key=f"m_{i}")
+        m_zone = colZone.text_input("Machine Zone*", key=f"z_{i}") # FIXED: Added Machine Zone
         m_attr = col3.text_input("Attributes*", key=f"a_{i}")
         m_unit = col4.selectbox("Unit*", ["SET", "Pcs", "Kg", "NOS"], key=f"u_{i}")
         
@@ -169,7 +170,7 @@ if menu == "Create Request":
         m_type = col5.selectbox("Type*", MATERIAL_TYPES, key=f"t_{i}")
         m_group = col6.selectbox("Group*", MATERIAL_GROUPS, key=f"g_{i}")
         m_hsn = col7.text_input("HSN*", key=f"h_{i}")
-        materials_inputs.append((m_name, m_mach, m_attr, m_unit, m_type, m_group, m_hsn))
+        materials_inputs.append((m_name, m_mach, m_zone, m_attr, m_unit, m_type, m_group, m_hsn))
 
     reason = st.text_area("Reason for creation*")
 
@@ -192,11 +193,12 @@ if menu == "Create Request":
                     "Requester_Email": req_mail, 
                     "Material_Name": row[0],
                     "Machine": row[1], 
-                    "Attributes": row[2], 
-                    "Unit": row[3], 
-                    "Material_Type": row[4],
-                    "Material_Group": row[5], 
-                    "HSN_Code": row[6], 
+                    "Machine_Zone": row[2], # FIXED: Included Machine Zone
+                    "Attributes": row[3], 
+                    "Unit": row[4], 
+                    "Material_Type": row[5],
+                    "Material_Group": row[6], 
+                    "HSN_Code": row[7], 
                     "Status": "Pending", 
                     "Reason": reason
                 }
@@ -205,7 +207,7 @@ if menu == "Create Request":
             
             send_admin_email(final_list)
             write_log(req_by, f"Submitted {req_id}")
-            st.success(f"Request {req_id} submitted and emails sent!")
+            st.success(f"Request {req_id} submitted successfully!")
 
 elif menu == "Admin Panel":
     st.title("Admin Panel")

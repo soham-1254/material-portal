@@ -4,12 +4,18 @@ import os
 from datetime import datetime
 import smtplib
 from email.mime.text import MIMEText
+import pymongo
+from dotenv import load_dotenv
 
 # -----------------------------
-# CONFIG & LISTS
+# CONFIG & DATABASE SETUP
 # -----------------------------
-SMTP_EMAIL = "prakhar.chandel@jute-india.com"
-SMTP_PASSWORD = "yees jhwl rnxj jeyy"
+# Load environment variables from .env file
+load_dotenv()
+
+# Email Config (Using .env for security)
+SMTP_EMAIL = os.getenv("SMTP_EMAIL", "prakhar.chandel@jute-india.com")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "") # Put your new App Password in your .env file!
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
@@ -21,9 +27,19 @@ ADMIN_EMAILS = [
     "prakhar.chandel@jute-india.com"
 ]
 
-REQUEST_FILE = "material_requests.xlsx"
-LOG_FILE = "logs.xlsx"
+# MongoDB Cloud Connection
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+try:
+    client = pymongo.MongoClient(MONGO_URI)
+    db = client["form_to_sap"]
+    request_collection = db["material_requests"]
+    log_collection = db["logs"]
+except Exception as e:
+    st.error(f"Database Connection Error: {e}")
 
+# -----------------------------
+# LISTS & MAPPINGS
+# -----------------------------
 MATERIAL_TYPES = ["Select", "ZCON", "ZERS", "ZFGS", "ZNSN", "ZPKG", "ZRJU", "ZROW", "ZRSP", "ZSER", "ZSFG", "ZUBN"]
 
 MATERIAL_GROUPS = [
@@ -91,29 +107,36 @@ DEPT_KEYWORDS = {
 # FUNCTIONS
 # -----------------------------
 def generate_request_id():
-    if not os.path.exists(REQUEST_FILE): return "MAT-0001"
-    df = pd.read_excel(REQUEST_FILE)
-    if df.empty: return "MAT-0001"
-    last = df["Request_ID"].iloc[-1]
-    number = int(last.split("-")[1]) + 1
-    return f"MAT-{number:04d}"
+    # Find the latest document in MongoDB by sorting Request_ID descending
+    last_doc = request_collection.find_one(sort=[("Request_ID", pymongo.DESCENDING)])
+    if not last_doc or "Request_ID" not in last_doc: 
+        return "MAT-0001"
+    
+    last_id = last_doc["Request_ID"]
+    try:
+        number = int(last_id.split("-")[1]) + 1
+        return f"MAT-{number:04d}"
+    except:
+        return "MAT-0001"
 
 def save_request(data):
-    df = pd.DataFrame([data])
-    if os.path.exists(REQUEST_FILE):
-        old = pd.read_excel(REQUEST_FILE)
-        df = pd.concat([old, df], ignore_index=True)
-    df.to_excel(REQUEST_FILE, index=False)
+    # Insert safely into MongoDB Cloud
+    request_collection.insert_one(data)
 
 def write_log(user, action):
-    log = {"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "User": user, "Action": action}
-    df = pd.DataFrame([log])
-    if os.path.exists(LOG_FILE):
-        old = pd.read_excel(LOG_FILE)
-        df = pd.concat([old, df], ignore_index=True)
-    df.to_excel(LOG_FILE, index=False)
+    # Insert securely into MongoDB Cloud
+    log_entry = {
+        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
+        "User": user, 
+        "Action": action
+    }
+    log_collection.insert_one(log_entry)
 
 def send_admin_email(all_data):
+    if not SMTP_PASSWORD:
+        st.warning("Email not sent: Please add your SMTP_PASSWORD to your .env file.")
+        return
+
     first = all_data[0]
     requester_email = first['Requester_Email']
     all_recipients = ADMIN_EMAILS + [requester_email]
@@ -185,7 +208,7 @@ def get_subclass_options(dept, selected_class):
 # UI
 # -----------------------------
 st.set_page_config(page_title="Material Master Portal", layout="wide")
-menu = st.sidebar.selectbox("Navigation", ["Create Request","Admin Panel","Logs"])
+menu = st.sidebar.selectbox("Navigation", ["Create Request", "Admin Panel", "Logs"])
 
 if menu == "Create Request":
     st.title("Material Creation Form")
@@ -243,6 +266,7 @@ if menu == "Create Request":
                     st.error(f"Please fill all mandatory fields (*) for Material {idx+1}.")
                     st.stop()
                 
+                # Create dictionary for MongoDB
                 d = {
                     "Request_ID": req_id, "Date": datetime.now(), "Mill": mill, "Department": dept,
                     "Requested_By_dept": req_by_dept, "Requested_By": req_by, "Requester_Email": req_mail,
@@ -252,15 +276,23 @@ if menu == "Create Request":
                     "HSN_Code": row[7], "Ref_Material": row[8],
                     "Reason": reason, "Status": "Pending"
                 }
+                
+                # Save to MongoDB
                 save_request(d)
                 final_list.append(d)
 
             if final_list:
                 send_admin_email(final_list)
                 write_log(req_by, f"Submitted {req_id}")
-                st.success(f"SUCCESS: Request {req_id} submitted. Check your email for a copy.")
+                st.success(f"SUCCESS: Request {req_id} submitted to Database. Check your email for a copy.")
 
-elif menu == "Logs":
-    st.title("Logs")
-    if os.path.exists(LOG_FILE): st.dataframe(pd.read_excel(LOG_FILE))
-    else: st.info("No logs yet")
+# NEW ADMIN PANEL SECTION
+elif menu == "Admin Panel":
+    st.title("Admin Control Panel")
+    st.subheader("Pending Material Requests")
+    
+    # Fetch all material requests from MongoDB, excluding the internal _id field
+    requests_data = list(request_collection.find({}, {"_id": 0}))
+    
+    if requests_data:
+        st.dataframe(

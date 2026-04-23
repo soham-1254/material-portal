@@ -173,7 +173,7 @@ if menu == "Create Request":
         m_mach = col2.text_input("Machine*", key=f"m_{i}")
         m_zone = colZone.text_input("Machine Zone*", key=f"z_{i}")
         m_attr = col3.text_input("Attributes*", key=f"a_{i}")
-        m_unit = col4.selectbox("Unit*", ["SET", "Pcs", "Kg", "NOS"], key=f"u_{i}")
+        m_unit = col4.selectbox("Unit*", ["SET", "Pcs", "Kg", "NOS","Meter"], key=f"u_{i}")
         
         col5, col6, col7, col8 = st.columns(4)
         m_type = col5.selectbox("Type*", MATERIAL_TYPES, key=f"t_{i}")

@@ -17,7 +17,9 @@ SMTP_PORT = 587
 ADMIN_EMAILS = [
     "soham.panda@jute-india.com",
     "payal.sinha@jute-india.com",
-    "nitin.pandey@jute-india.com",
+    "sutanu.mukherjee@jute-india.com",
+    "debanka.das@jute-india.com",
+    "anshuman.sarangi@jute-india.com",
     "prakhar.chandel@jute-india.com"
 ]
 
